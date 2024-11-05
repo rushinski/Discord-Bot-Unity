@@ -21,12 +21,13 @@ module.exports = {
 
     const welcomeEmbed = new EmbedBuilder()
       .setColor('#FF0000')
-      .setTitle('Welcome to THE ORDER OF THE CRIMSON MOON Rok Jumping Group!')
+      .setTitle('Welcome to THE ORDER OF THE CRIMSON MOON!')
       .setDescription(
-        `Hey ${member}, we're glad to have you here! To get started:\n` +
+        `Hey **${member.user.username}**, we're glad to have you here! To get started:\n` +
         `- First check out <#1245565013457113138> for the server's rules and info.\n` +
         `- After that visit <#1245564997128683571> to verify yourself and gain access to the rest of the server.\n\n` +
-        `Thank you for helping to make our community bigger, we now have **${member.guild.memberCount}** members!`
+        `Thank you for helping to make our community bigger, we now have **${member.guild.memberCount}** members!\n` +
+        `*mention* <@${member.id}>`
       )
       .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
