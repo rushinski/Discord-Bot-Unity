@@ -5,6 +5,9 @@ const client = new Client({
         'Guilds',
         'GuildMembers',
         'GuildPresences',
+        'GuildMessages',
+        'MessageContent',
+        'GuildMessageReactions',
     ]
 });
 
