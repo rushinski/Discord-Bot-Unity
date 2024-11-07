@@ -33,8 +33,8 @@ module.exports = {
         .addFields(
           { name: 'Original Text:', value: message.content },
           { name: 'Translated Text:', value: translated.text }
-        )
-        .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+        );
+
       await message.reply({ embeds: [embed] });
     } catch (error) {
       console.error('Error translating message:', error);
