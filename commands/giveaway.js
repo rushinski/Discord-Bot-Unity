@@ -47,7 +47,7 @@ module.exports = {
         const giveawayEmbed = new EmbedBuilder() // Use EmbedBuilder instead of MessageEmbed
             .setTitle(`${title}`)
             .setDescription(`Prize: **${prize}**\nNumber of winners: **${winnersCount}**\nEnds at: **${endTimeUTC}** (UTC)`)
-            .setColor('#7CFC00')
+            .setColor('Green')
             .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
         // Send the giveaway message
@@ -71,7 +71,7 @@ module.exports = {
             const endEmbed = new EmbedBuilder() // Use EmbedBuilder instead of MessageEmbed
                 .setTitle(`${title} Ended!`)
                 .setDescription(`The giveaway for **${prize}** has ended!\nWinners: ${winnersMention}`)
-                .setColor('#FF0000')
+                .setColor('Red')
                 .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
             giveawayChannel.send({ embeds: [endEmbed] });
