@@ -27,9 +27,9 @@ module.exports = {
         { name: 'Joined at', value: formattedJoinTime },
         { name: 'Left at', value: formattedLeaveTime },
         { name: 'Time in Server', value: `${timeInServer} seconds` },
-        { name: 'Current Member Count', value: `${memberCount} members` } // Added member count
+        { name: 'Current Member Count', value: `${memberCount} members` }
       )
-      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });  // Make sure footer is correctly set here
 
     try {
       // Send the embed message to the specified channel
