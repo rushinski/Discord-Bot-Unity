@@ -4,20 +4,13 @@ module.exports = {
   name: Events.GuildMemberAdd,
   once: false,
   async execute(member) {
-    // Ensure the guild and channels are accessible
-    if (!member.guild) {
-      console.log('Guild is undefined');
-      return;
-    }
+    if (!member.guild) return console.log('Guild is undefined');
 
     const welcomeChannelId = '1245565011942834226';
+    const memberCountChannelId = '1300291093186744412'; // Replace with your member count channel ID
     const channel = member.guild.channels.cache.get(welcomeChannelId);
 
-    // Check if the channel is available
-    if (!channel) {
-      console.log('Welcome channel not found');
-      return;
-    }
+    if (!channel) return console.log('Welcome channel not found');
 
     const welcomeEmbed = new EmbedBuilder()
       .setColor('Green')
@@ -37,6 +30,19 @@ module.exports = {
       console.log('Welcome message sent successfully');
     } catch (error) {
       console.error('Failed to send welcome message:', error);
+    }
+
+    // Update member count channel
+    try {
+      const memberCountChannel = member.guild.channels.cache.get(memberCountChannelId);
+      if (memberCountChannel) {
+        await memberCountChannel.setName(`Members: ${member.guild.memberCount}`);
+        console.log('Member count updated successfully');
+      } else {
+        console.log('Member count channel not found');
+      }
+    } catch (error) {
+      console.error('Failed to update member count:', error);
     }
   }
 };
