@@ -1,5 +1,7 @@
 const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 
+const openTickets = new Map(); // Map to store userId and their ticket channel ID
+
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
@@ -12,6 +14,12 @@ module.exports = {
     // Handle ticket submission
     if (interaction.isButton() && interaction.customId === 'submitTicket') {
       const ticketType = interaction.client.userSelectedTicketType;
+
+      // Check if user already has an open ticket
+      if (openTickets.has(interaction.user.id)) {
+        return interaction.reply({ content: 'You already have an open ticket. Please close it before creating a new one.', ephemeral: true });
+      }
+
       if (!ticketType) {
         return interaction.reply({ content: 'Please select a ticket type before submitting.', ephemeral: true });
       }
@@ -41,6 +49,9 @@ module.exports = {
         ],
       });
 
+      // Store the ticket channel ID to prevent multiple tickets
+      openTickets.set(interaction.user.id, ticketChannel.id);
+
       // Create the embed message for the ticket channel
       const ticketEmbed = new EmbedBuilder()
         .setColor('Blue')
@@ -61,11 +72,12 @@ module.exports = {
 
       const closeRow = new ActionRowBuilder().addComponents(closeButton);
 
-      // Send the embed message in the ticket channel with the close button
-      await ticketChannel.send({
+      // Send the embed message in the ticket channel with the close button and pin it
+      const message = await ticketChannel.send({
         embeds: [ticketEmbed],
         components: [closeRow],
       });
+      await message.pin(); // Pin the ticket embed message
 
       await interaction.reply({ content: `Ticket created! Check ${ticketChannel}`, ephemeral: true });
     }
@@ -75,6 +87,10 @@ module.exports = {
       // Confirm the interaction is happening in a ticket channel
       if (interaction.channel && interaction.channel.name.startsWith('ticket-')) {
         await interaction.reply({ content: 'Closing ticket...', ephemeral: true });
+
+        // Remove the user from the openTickets map
+        const ticketOwner = Array.from(openTickets).find(([, channelId]) => channelId === interaction.channel.id);
+        if (ticketOwner) openTickets.delete(ticketOwner[0]);
 
         setTimeout(() => interaction.channel.delete().catch(console.error), 3000); // Delay to allow response to be sent
       } else {
