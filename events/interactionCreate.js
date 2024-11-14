@@ -2,6 +2,10 @@ const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, Butto
 
 const openTickets = new Map(); // Map to store userId and their ticket channel ID
 
+// Define role IDs for R4 Application Support and General Support roles
+const R4_APPLICATION_SUPPORT_ROLE = '1306333653608960082'; // Replace with your R4 Application Support role ID
+const GENERAL_SUPPORT_ROLE = '1306333607018893322'; // Replace with your General Support role ID
+
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
@@ -24,12 +28,11 @@ module.exports = {
         return interaction.reply({ content: 'Please select a ticket type before submitting.', ephemeral: true });
       }
 
-      // Create the ticket channel in the specific category
-      const ticketChannel = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
-        type: ChannelType.GuildText,
-        parent: '1280301664514867292', // Category ID for tickets
-        permissionOverwrites: [
+      // Determine the appropriate support role and permissions
+      let supportRoleId, permissions;
+      if (ticketType === 'application') {
+        supportRoleId = R4_APPLICATION_SUPPORT_ROLE;
+        permissions = [
           {
             id: interaction.guild.id,
             deny: [PermissionsBitField.Flags.ViewChannel], // Hide from everyone else
@@ -39,14 +42,34 @@ module.exports = {
             allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
           },
           {
-            id: '1306333653608960082', // R4 role ID
+            id: R4_APPLICATION_SUPPORT_ROLE,
+            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+          },
+        ];
+      } else {
+        supportRoleId = GENERAL_SUPPORT_ROLE;
+        permissions = [
+          {
+            id: interaction.guild.id,
+            deny: [PermissionsBitField.Flags.ViewChannel], // Hide from everyone else
+          },
+          {
+            id: interaction.user.id,
             allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
           },
           {
-            id: '1306333607018893322', // Helper role ID
+            id: GENERAL_SUPPORT_ROLE,
             allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
           },
-        ],
+        ];
+      }
+
+      // Create the ticket channel in the specific category with appropriate permissions
+      const ticketChannel = await interaction.guild.channels.create({
+        name: `ticket-${interaction.user.username}`,
+        type: ChannelType.GuildText,
+        parent: '1280301664514867292', // Category ID for tickets
+        permissionOverwrites: permissions,
       });
 
       // Store the ticket channel ID to prevent multiple tickets
@@ -74,6 +97,7 @@ module.exports = {
 
       // Send the embed message in the ticket channel with the close button and pin it
       const message = await ticketChannel.send({
+        content: `<@&${supportRoleId}>`, // Ping the appropriate support role
         embeds: [ticketEmbed],
         components: [closeRow],
       });
