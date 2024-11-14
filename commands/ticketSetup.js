@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
+  admin: true,
   data: new SlashCommandBuilder()
     .setName('ticket-setup')
     .setDescription('Sets up the ticket system'),

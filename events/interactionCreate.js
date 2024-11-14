@@ -82,7 +82,8 @@ module.exports = {
         .setDescription(`This ticket was opened by **${interaction.user.tag}** for the following reason:`)
         .addFields(
           { name: 'Ticket Reason', value: `**${ticketType}**`, inline: false },
-          { name: 'Requested By', value: interaction.user.tag, inline: false }
+          { name: 'Requested By', value: `<@${interaction.user.id}>`, inline: false }, // Ping the user
+          { name: 'Support Role', value: `<@&${supportRoleId}>`, inline: false } // Ping the support role
         )
         .setFooter({ text: 'Please click the button below when you are done.' })
         .setTimestamp();
@@ -97,7 +98,6 @@ module.exports = {
 
       // Send the embed message in the ticket channel with the close button and pin it
       const message = await ticketChannel.send({
-        content: `<@&${supportRoleId}>`, // Ping the appropriate support role
         embeds: [ticketEmbed],
         components: [closeRow],
       });
