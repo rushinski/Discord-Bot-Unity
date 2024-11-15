@@ -1,4 +1,4 @@
-const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
 const openTickets = new Map(); // Map to store userId and their ticket channel ID
 
@@ -12,11 +12,27 @@ module.exports = {
     // Handle ticket type selection
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticketType') {
       interaction.client.userSelectedTicketType = interaction.values[0];
-      await interaction.reply({ content: 'Ticket type selected. Now click "Submit" to create your ticket.', ephemeral: true });
+
+      // Open a modal for the user to describe their issue
+      const modal = new ModalBuilder()
+        .setCustomId('ticketDescriptionModal')
+        .setTitle('Describe Your Issue');
+
+      const descriptionInput = new TextInputBuilder()
+        .setCustomId('ticketDescription')
+        .setLabel('Please describe your issue:')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Provide as much detail as possible.')
+        .setRequired(true);
+
+      const descriptionRow = new ActionRowBuilder().addComponents(descriptionInput);
+      modal.addComponents(descriptionRow);
+
+      await interaction.showModal(modal);
     }
 
-    // Handle ticket submission
-    if (interaction.isButton() && interaction.customId === 'submitTicket') {
+    // Handle ticket description modal submission
+    if (interaction.isModalSubmit() && interaction.customId === 'ticketDescriptionModal') {
       const ticketType = interaction.client.userSelectedTicketType;
 
       // Check if user already has an open ticket
@@ -24,9 +40,7 @@ module.exports = {
         return interaction.reply({ content: 'You already have an open ticket. Please close it before creating a new one.', ephemeral: true });
       }
 
-      if (!ticketType) {
-        return interaction.reply({ content: 'Please select a ticket type before submitting.', ephemeral: true });
-      }
+      const ticketDescription = interaction.fields.getTextInputValue('ticketDescription');
 
       // Determine the appropriate support role and permissions
       let supportRoleId, permissions;
@@ -83,7 +97,8 @@ module.exports = {
         .addFields(
           { name: 'Ticket Reason', value: `**${ticketType}**`, inline: false },
           { name: 'Requested By', value: `<@${interaction.user.id}>`, inline: false }, // Ping the user
-          { name: 'Support Role', value: `<@&${supportRoleId}>`, inline: false } // Ping the support role
+          { name: 'Support Role', value: `<@&${supportRoleId}>`, inline: false }, // Ping the support role
+          { name: 'Issue Description', value: ticketDescription, inline: false } // User's description
         )
         .setFooter({ text: 'Please click the button below when you are done.' })
         .setTimestamp();
