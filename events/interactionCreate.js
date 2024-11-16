@@ -1,5 +1,5 @@
 const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
-
+const TicketTranscript = require('../schemas/ticketTranscript'); // Adjust the path as necessary
 const openTickets = new Map(); // Map to store userId and their ticket channel ID
 
 // Define role IDs for R4 Application Support and General Support roles
@@ -123,15 +123,44 @@ module.exports = {
 
     // Handle ticket closure
     if (interaction.isButton() && interaction.customId === 'closeTicket') {
-      // Confirm the interaction is happening in a ticket channel
       if (interaction.channel && interaction.channel.name.startsWith('ticket-')) {
-        await interaction.reply({ content: 'Closing ticket...', ephemeral: true });
+        await interaction.reply({ content: 'Saving transcript and closing ticket...', ephemeral: true });
 
-        // Remove the user from the openTickets map
+        // Fetch all messages in the ticket channel
+        const messages = await interaction.channel.messages.fetch({ limit: 100 });
+        const messageArray = Array.from(messages.values()).reverse();
+
+        // Format messages for saving
+        const transcript = messageArray.map(msg => ({
+          author: msg.author.tag,
+          content: msg.content,
+          timestamp: msg.createdAt,
+        }));
+
+        // Save the transcript to MongoDB
         const ticketOwner = Array.from(openTickets).find(([, channelId]) => channelId === interaction.channel.id);
-        if (ticketOwner) openTickets.delete(ticketOwner[0]);
+        if (ticketOwner) {
+          const [userId, channelId] = ticketOwner;
+          openTickets.delete(userId);
 
-        setTimeout(() => interaction.channel.delete().catch(console.error), 3000); // Delay to allow response to be sent
+          const ticketData = new TicketTranscript({
+            userId,
+            username: interaction.user.tag,
+            ticketType: 'Unknown', // Adjust as needed based on your logic
+            description: 'Unknown', // Adjust as needed based on your logic
+            messages: transcript,
+          });
+
+          try {
+            await ticketData.save();
+            console.log('Ticket transcript saved successfully.');
+          } catch (err) {
+            console.error('Failed to save ticket transcript:', err);
+          }
+        }
+
+        // Delete the channel after saving
+        setTimeout(() => interaction.channel.delete().catch(console.error), 3000);
       } else {
         await interaction.reply({ content: 'This is not a ticket channel!', ephemeral: true });
       }
