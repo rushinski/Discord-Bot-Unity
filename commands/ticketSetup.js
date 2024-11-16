@@ -23,17 +23,11 @@ module.exports = {
         { label: 'Other', value: 'other', description: 'For anything else' },
       ]);
 
-    const submitButton = new ButtonBuilder()
-      .setCustomId('submitTicket')
-      .setLabel('Submit')
-      .setStyle(ButtonStyle.Primary);
-
     const row1 = new ActionRowBuilder().addComponents(ticketSelectMenu);
-    const row2 = new ActionRowBuilder().addComponents(submitButton);
 
     await interaction.reply({
       embeds: [ticketEmbed],
-      components: [row1, row2],
+      components: [row1],
       ephemeral: false,
     });
   },
