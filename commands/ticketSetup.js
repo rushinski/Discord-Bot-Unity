@@ -18,7 +18,9 @@ module.exports = {
       .addOptions([
         { label: 'R4/R5 Application', value: 'application', description: 'Apply for R4/R5 role' },
         { label: 'Help', value: 'help', description: 'Request general help' },
-        { label: 'Questions', value: 'questions', description: 'Ask a question' },
+        { label: 'Complaints', value: 'complaints', description: 'File a complaint' },
+        { label: 'Suggestions', value: 'suggestions', description: 'Make a suggestion' },
+        { label: 'Other', value: 'other', description: 'For anything else' },
       ]);
 
     const submitButton = new ButtonBuilder()
