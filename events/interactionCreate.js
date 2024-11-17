@@ -1,6 +1,6 @@
 const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const TicketTranscript = require('../schemas/ticketTranscript'); // Adjust the path as necessary
-const openTickets = new Map(); // Map to store userId and their ticket channel ID
+const openTickets = new Map(); // Map to store userId and their ticket details
 
 const R4_APPLICATION_SUPPORT_ROLE = '1306333653608960082'; // Replace with your R4 Application Support role ID
 const GENERAL_SUPPORT_ROLE = '1306333607018893322'; // Replace with your General Support role ID
@@ -53,7 +53,12 @@ module.exports = {
         permissionOverwrites: permissions,
       });
 
-      openTickets.set(interaction.user.id, ticketChannel.id);
+      // Store ticket details in the Map
+      openTickets.set(interaction.user.id, {
+        channelId: ticketChannel.id,
+        ticketType,
+        description: ticketDescription,
+      });
 
       const ticketEmbed = new EmbedBuilder()
         .setColor('Blue')
@@ -100,16 +105,16 @@ module.exports = {
           }))
           .filter(msg => msg.content); // Filter out empty content
 
-        const ticketOwner = Array.from(openTickets).find(([, channelId]) => channelId === interaction.channel.id);
+        const ticketOwner = Array.from(openTickets).find(([, details]) => details.channelId === interaction.channel.id);
         if (ticketOwner) {
-          const [userId, channelId] = ticketOwner;
+          const [userId, details] = ticketOwner;
           openTickets.delete(userId);
 
           const ticketData = new TicketTranscript({
             userId,
             username: interaction.user.tag,
-            ticketType: 'Unknown',
-            description: 'Unknown',
+            ticketType: details.ticketType,
+            description: details.description,
             messages: transcript,
           });
 
