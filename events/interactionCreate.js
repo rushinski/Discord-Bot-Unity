@@ -1,16 +1,47 @@
-const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { 
+  ChannelType, 
+  PermissionsBitField, 
+  ActionRowBuilder, 
+  ButtonBuilder, 
+  ButtonStyle, 
+  EmbedBuilder, 
+  ModalBuilder, 
+  TextInputBuilder, 
+  TextInputStyle 
+} = require('discord.js');
 const TicketTranscript = require('../schemas/ticketTranscript'); // Adjust the path as necessary
 const openTickets = new Map(); // Map to store userId and their ticket details
 
 const R4_APPLICATION_SUPPORT_ROLE = '1306333653608960082'; // Replace with your R4 Application Support role ID
 const GENERAL_SUPPORT_ROLE = '1306333607018893322'; // Replace with your General Support role ID
 
+// Function to fetch all messages from a channel
+async function fetchAllMessages(channel) {
+  let messages = [];
+  let lastMessageId;
+
+  while (true) {
+    const fetchedMessages = await channel.messages.fetch({
+      limit: 100,
+      ...(lastMessageId && { before: lastMessageId }),
+    });
+
+    messages.push(...fetchedMessages.values());
+    if (fetchedMessages.size < 100) break; // Break if fewer than 100 messages were fetched
+
+    lastMessageId = fetchedMessages.last().id; // Update the last message ID
+  }
+
+  return messages.reverse(); // Reverse to maintain chronological order
+}
+
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
     // Handle ticket type selection
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticketType') {
-      interaction.client.userSelectedTicketType = interaction.values[0];
+      const ticketType = interaction.values[0];
+      interaction.client.userSelectedTicketType = ticketType;
 
       const modal = new ModalBuilder()
         .setCustomId('ticketDescriptionModal')
@@ -49,11 +80,10 @@ module.exports = {
       const ticketChannel = await interaction.guild.channels.create({
         name: `ticket-${interaction.user.username}`,
         type: ChannelType.GuildText,
-        parent: '1280301664514867292',
+        parent: '1280301664514867292', // Replace with your parent category ID
         permissionOverwrites: permissions,
       });
 
-      // Store ticket details in the Map
       openTickets.set(interaction.user.id, {
         channelId: ticketChannel.id,
         ticketType,
@@ -95,15 +125,13 @@ module.exports = {
       if (interaction.channel && interaction.channel.name.startsWith('ticket-')) {
         await interaction.reply({ content: 'Saving transcript and closing ticket...', ephemeral: true });
 
-        const messages = await interaction.channel.messages.fetch({ limit: 100 });
-        const transcript = Array.from(messages.values())
-          .reverse()
-          .map(msg => ({
-            author: msg.author.tag,
-            content: msg.content || '[Non-text message]', // Handle empty content
-            timestamp: msg.createdAt,
-          }))
-          .filter(msg => msg.content); // Filter out empty content
+        const messages = await fetchAllMessages(interaction.channel);
+
+        const transcript = messages.map(msg => ({
+          author: msg.author.tag,
+          content: msg.content || '[Non-text message]', // Handle empty content
+          timestamp: msg.createdAt,
+        }));
 
         const ticketOwner = Array.from(openTickets).find(([, details]) => details.channelId === interaction.channel.id);
         if (ticketOwner) {
