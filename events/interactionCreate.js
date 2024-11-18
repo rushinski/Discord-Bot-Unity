@@ -1,47 +1,17 @@
-const { 
-  ChannelType, 
-  PermissionsBitField, 
-  ActionRowBuilder, 
-  ButtonBuilder, 
-  ButtonStyle, 
-  EmbedBuilder, 
-  ModalBuilder, 
-  TextInputBuilder, 
-  TextInputStyle 
-} = require('discord.js');
+const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const TicketTranscript = require('../schemas/ticketTranscript'); // Adjust the path as necessary
-const openTickets = new Map(); // Map to store userId and their ticket details
+const openTickets = new Map(); // Map to store userId and their ticket channel ID
 
 const R4_APPLICATION_SUPPORT_ROLE = '1306333653608960082'; // Replace with your R4 Application Support role ID
 const GENERAL_SUPPORT_ROLE = '1306333607018893322'; // Replace with your General Support role ID
-
-// Function to fetch all messages from a channel
-async function fetchAllMessages(channel) {
-  let messages = [];
-  let lastMessageId;
-
-  while (true) {
-    const fetchedMessages = await channel.messages.fetch({
-      limit: 100,
-      ...(lastMessageId && { before: lastMessageId }),
-    });
-
-    messages.push(...fetchedMessages.values());
-    if (fetchedMessages.size < 100) break; // Break if fewer than 100 messages were fetched
-
-    lastMessageId = fetchedMessages.last().id; // Update the last message ID
-  }
-
-  return messages.reverse(); // Reverse to maintain chronological order
-}
+const TRANSCRIPT_CHANNEL_ID = '1307946220609605783'; // Replace with your designated transcript channel ID
 
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
     // Handle ticket type selection
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticketType') {
-      const ticketType = interaction.values[0];
-      interaction.client.userSelectedTicketType = ticketType;
+      interaction.client.userSelectedTicketType = interaction.values[0];
 
       const modal = new ModalBuilder()
         .setCustomId('ticketDescriptionModal')
@@ -80,15 +50,11 @@ module.exports = {
       const ticketChannel = await interaction.guild.channels.create({
         name: `ticket-${interaction.user.username}`,
         type: ChannelType.GuildText,
-        parent: '1280301664514867292', // Replace with your parent category ID
+        parent: '1280301664514867292',
         permissionOverwrites: permissions,
       });
 
-      openTickets.set(interaction.user.id, {
-        channelId: ticketChannel.id,
-        ticketType,
-        description: ticketDescription,
-      });
+      openTickets.set(interaction.user.id, { channelId: ticketChannel.id, ticketType, description: ticketDescription });
 
       const ticketEmbed = new EmbedBuilder()
         .setColor('Blue')
@@ -125,32 +91,80 @@ module.exports = {
       if (interaction.channel && interaction.channel.name.startsWith('ticket-')) {
         await interaction.reply({ content: 'Saving transcript and closing ticket...', ephemeral: true });
 
-        const messages = await fetchAllMessages(interaction.channel);
+        const messages = await interaction.channel.messages.fetch({ limit: 100 });
+        const transcript = Array.from(messages.values())
+          .reverse()
+          .map(msg => ({
+            author: msg.author.tag,
+            content: msg.content || '[Non-text message]', // Handle empty content
+            timestamp: msg.createdAt,
+          }))
+          .filter(msg => msg.content);
 
-        const transcript = messages.map(msg => ({
-          author: msg.author.tag,
-          content: msg.content || '[Non-text message]', // Handle empty content
-          timestamp: msg.createdAt,
-        }));
+        const ticketDetails = openTickets.get(interaction.user.id);
+        if (ticketDetails) {
+          const { channelId, ticketType, description } = ticketDetails;
+          openTickets.delete(interaction.user.id);
 
-        const ticketOwner = Array.from(openTickets).find(([, details]) => details.channelId === interaction.channel.id);
-        if (ticketOwner) {
-          const [userId, details] = ticketOwner;
-          openTickets.delete(userId);
-
-          const ticketData = new TicketTranscript({
-            userId,
+          const transcriptData = new TicketTranscript({
+            userId: interaction.user.id,
             username: interaction.user.tag,
-            ticketType: details.ticketType,
-            description: details.description,
+            ticketType,
+            description,
             messages: transcript,
           });
 
           try {
-            await ticketData.save();
+            await transcriptData.save();
             console.log('Ticket transcript saved successfully.');
           } catch (err) {
             console.error('Failed to save ticket transcript:', err);
+          }
+
+          // Generate a formatted transcript
+          const formattedTranscript = transcript.map(msg => {
+            const time = msg.timestamp.toLocaleString();
+            return `[${time}] ${msg.author}: ${msg.content}`;
+          }).join('\n');
+
+          const header = `**Ticket Transcript**\n`
+            + `**Ticket Type**: ${ticketType}\n`
+            + `**Description**: ${description}\n`
+            + `**Created By**: ${interaction.user.tag}\n\n`
+            + `**Messages:**\n`;
+
+          const fullTranscript = header + formattedTranscript;
+
+          // Send the transcript to the ticket creator
+          try {
+            await interaction.user.send(`Here is your ticket transcript:\n\n\`\`\`\n${fullTranscript}\n\`\`\``);
+            console.log('Transcript sent to the ticket creator.');
+          } catch (err) {
+            console.error('Failed to DM the user the transcript:', err);
+          }
+
+          // Send the transcript to the designated channel
+          const transcriptChannel = await interaction.guild.channels.fetch(TRANSCRIPT_CHANNEL_ID);
+          if (transcriptChannel) {
+            const embed = new EmbedBuilder()
+              .setColor('Blue')
+              .setTitle('Ticket Transcript')
+              .setDescription('A transcript has been generated for a closed ticket.')
+              .addFields(
+                { name: 'Ticket Type', value: ticketType, inline: true },
+                { name: 'Created By', value: interaction.user.tag, inline: true },
+                { name: 'Description', value: description, inline: false },
+              )
+              .setTimestamp();
+
+            const transcriptBuffer = Buffer.from(fullTranscript, 'utf-8');
+            await transcriptChannel.send({
+              embeds: [embed],
+              files: [{ attachment: transcriptBuffer, name: `transcript-${interaction.user.id}.txt` }],
+            });
+            console.log('Transcript sent to the transcript channel.');
+          } else {
+            console.error('Transcript channel not found.');
           }
         }
 
