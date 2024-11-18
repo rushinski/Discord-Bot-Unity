@@ -18,7 +18,9 @@ module.exports = {
       📋 **Complaints**: File a formal complaint.
       💡 **Suggestions**: Share your ideas or improvements.
       ❓ **Other**: For any issues not listed above.`
-    );
+    )
+    .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+
   
   const ticketSelectMenu = new StringSelectMenuBuilder()
     .setCustomId('ticketType')

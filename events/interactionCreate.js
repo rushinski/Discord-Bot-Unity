@@ -57,17 +57,16 @@ module.exports = {
       openTickets.set(interaction.user.id, { channelId: ticketChannel.id, ticketType, description: ticketDescription });
 
       const ticketEmbed = new EmbedBuilder()
-        .setColor('Blue')
-        .setTitle(`${ticketType} Ticket`)
-        .setDescription(`This ticket was opened by **${interaction.user.tag}** for the following reason:`)
-        .addFields(
-          { name: 'Ticket Reason', value: `**${ticketType}**`, inline: false },
-          { name: 'Requested By', value: `<@${interaction.user.id}>`, inline: false },
-          { name: 'Support Role', value: `<@&${supportRoleId}>`, inline: false },
-          { name: 'Issue Description', value: ticketDescription, inline: false }
-        )
-        .setFooter({ text: 'Please click the button below when you are done.' })
-        .setTimestamp();
+      .setColor('Blue')
+      .setTitle(`🎟️ ${ticketType.charAt(0).toUpperCase() + ticketType.slice(1)} Ticket`) // Capitalize ticket type
+      .setDescription(
+        `**A new ticket has been opened!**\n\n` +
+        `📝 **Reason:** ${ticketType}\n` +
+        `👤 **Requested By:** <@${interaction.user.id}>\n` +
+        `📢 **Support Role:** <@&${supportRoleId}>\n\n` +
+        `💬 **Issue Description:**\n${ticketDescription}`
+      )
+      .setFooter({ text: 'Click the button below to close the ticket when done.\nORDER OF THE CRIMSON MOON 2024 ®' })    
 
       const closeButton = new ButtonBuilder()
         .setCustomId('closeTicket')
