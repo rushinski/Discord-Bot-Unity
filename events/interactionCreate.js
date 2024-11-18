@@ -1,4 +1,4 @@
-const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder } = require('discord.js');
 const TicketTranscript = require('../schemas/ticketTranscript'); // Adjust the path as necessary
 const openTickets = new Map(); // Map to store userId and their ticket channel ID
 
@@ -130,8 +130,7 @@ module.exports = {
           const header = `**Ticket Transcript**\n`
             + `**Ticket Type**: ${ticketType}\n`
             + `**Description**: ${description}\n`
-            + `**Created By**: ${interaction.user.tag}\n\n`
-            + `**Messages:**\n`;
+            + `**Created By**: ${interaction.user.tag}\n\n`;
 
           const fullTranscript = header + formattedTranscript;
 
@@ -146,22 +145,13 @@ module.exports = {
           // Send the transcript to the designated channel
           const transcriptChannel = await interaction.guild.channels.fetch(TRANSCRIPT_CHANNEL_ID);
           if (transcriptChannel) {
-            const embed = new EmbedBuilder()
-              .setColor('Blue')
-              .setTitle('Ticket Transcript')
-              .setDescription('A transcript has been generated for a closed ticket.')
-              .addFields(
-                { name: 'Ticket Type', value: ticketType, inline: true },
-                { name: 'Created By', value: interaction.user.tag, inline: true },
-                { name: 'Description', value: description, inline: false },
-              )
-              .setTimestamp();
+            const transcriptMessage = `**Ticket Transcript**\n`
+              + `**Ticket Type**: ${ticketType}\n`
+              + `**Description**: ${description}\n`
+              + `**Created By**: ${interaction.user.tag}\n\n`
+              + '```' + formattedTranscript + '```';
 
-            const transcriptBuffer = Buffer.from(fullTranscript, 'utf-8');
-            await transcriptChannel.send({
-              embeds: [embed],
-              files: [{ attachment: transcriptBuffer, name: `transcript-${interaction.user.id}.txt` }],
-            });
+            await transcriptChannel.send(transcriptMessage);
             console.log('Transcript sent to the transcript channel.');
           } else {
             console.error('Transcript channel not found.');
