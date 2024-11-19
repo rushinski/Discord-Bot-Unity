@@ -36,7 +36,7 @@ module.exports = {
     try {
       const memberCountChannel = member.guild.channels.cache.get(memberCountChannelId);
       if (memberCountChannel) {
-        await memberCountChannel.setName(`Members: ${member.guild.memberCount}`);
+        await memberCountChannel.setName(`👥︱ᴛᴏᴛᴀʟ ᴍᴇᴍʙᴇʀs : ${member.guild.memberCount}`);
         console.log('Member count updated successfully');
       } else {
         console.log('Member count channel not found');
@@ -44,5 +44,6 @@ module.exports = {
     } catch (error) {
       console.error('Failed to update member count:', error);
     }
+    
   }
 };
