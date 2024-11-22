@@ -9,9 +9,9 @@ module.exports = {
   
   async execute(interaction) {
     const embed = new EmbedBuilder()
+    .setColor('Green')
     .setTitle('Verification')
     .setDescription('**React to this message with the ✅ emoji to verify yourself** and gain access to the rest of the server!')
-    .setColor('Green')
     .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
     // Send the embed and fetch the message
@@ -21,6 +21,6 @@ module.exports = {
     fs.writeFileSync('txtIds/verifyReactionId.txt', message.id);
 
     // Add reactions to the message
-    await message.react('✅'); // Gamer Role
+    await message.react('✅'); // Verify role emoji
   },
 };

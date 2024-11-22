@@ -16,7 +16,9 @@ module.exports = {
     // Assign roles based on emoji
     if (emoji.name === '✅') {
       const role = message.guild.roles.cache.find(r => r.name === 'Jumpers');
-      if (role) await member.roles.add(role);
-    } 
-  },
-};
+      if (role) {
+        await member.roles.add(role);
+      }
+    }
+  }
+}
