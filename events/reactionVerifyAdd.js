@@ -33,7 +33,11 @@ module.exports = {
         // Send a DM to the user
         const embed = new EmbedBuilder()
         .setTitle(`Succesfully Verified! What's Next?`)
-        .setDescription(`You have successfully verified! Next head over to https://discord.com/channels/1245050735138308116/1276264061083844618 to select roles and let us get to know you a little bit better!`)
+        .setDescription(
+          `You have successfully verified! Head over to:\n` +
+          `- [Select Roles](https://discord.com/channels/1245050735138308116/1276264061083844618): Let us get to know you a little better!\n` +
+          `- [Giveaways](https://discord.com/channels/1245050735138308116/1298113476580868127): Check out what giveaways are going on!`
+          )
         .setColor('Green')
         .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
