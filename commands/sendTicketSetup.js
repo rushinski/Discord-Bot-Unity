@@ -3,7 +3,7 @@ const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Strin
 module.exports = {
   admin: true,
   data: new SlashCommandBuilder()
-    .setName('send-ticket')
+    .setName('send-ticket-setup')
     .setDescription('Sets up the ticket system'),
 
   async execute(interaction) {
