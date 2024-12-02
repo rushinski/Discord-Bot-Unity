@@ -7,7 +7,7 @@ const ms = require('ms'); // Ensure you have the 'ms' package installed
 module.exports = {
     admin: true,
     data: new SlashCommandBuilder()
-        .setName('start-giveaway')
+        .setName('giveaway')
         .setDescription('Start a giveaway!')
         .addStringOption(option =>
           option.setName('title')

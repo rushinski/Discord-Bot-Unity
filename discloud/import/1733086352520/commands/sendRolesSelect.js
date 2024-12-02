@@ -18,7 +18,17 @@ module.exports = {
     const continentEmbed = new EmbedBuilder()
       .setColor('Blue')
       .setTitle('Where are you from? 🌍')
-      .setDescription(`React to this embed with the corresponding emoji that relates to where you are from!\n🦁︱**Africa**\n🦅︱**North America**\n🦜︱**South America**\n🐂︱**Europe**\n🐼︱**Asia**\n🐨︱**Australia**\n🐧︱**Antarctica**`)
+      .setDescription(`
+        React to this embed with the corresponding emoji that relates to where you are from!
+
+        🦁︱**Africa**  
+        🦅︱**North America**  
+        🦜︱**South America**  
+        🐂︱**Europe**  
+        🐼︱**Asia**  
+        🐨︱**Australia**  
+        🐧︱**Antarctica**
+      `)
       .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
     // Send the continent embed and fetch the message
@@ -40,7 +50,16 @@ module.exports = {
     const spenderEmbed = new EmbedBuilder()
       .setColor('Blue')
       .setTitle('How much money will you potentially spend monthly? 💵')
-      .setDescription(`React to this embed with the corresponding emoji that relates to your potentially monthly spending habits!\n🦐︱**$0**\n🐟︱**$1-150**\n🐬︱**$150-400**\n🦈︱**$400-1000**\n🐋︱**$1000-5000**\n🦑︱**$5000+**  `)
+      .setDescription(`
+        React to this embed with the corresponding emoji that relates to your potentially monthly spending habits!
+        
+        🦐︱**$0**  
+        🐟︱**$1-150**  
+        🐬︱**$150-400**  
+        🦈︱**$400-1000**  
+        🐋︱**$1000-5000**  
+        🦑︱**$5000+**  
+      `)
       .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
     // Send the spending embed and fetch the message
@@ -61,7 +80,13 @@ module.exports = {
     const genderEmbed = new EmbedBuilder()
       .setColor('Blue')
       .setTitle('What gender are you? 🧬')
-      .setDescription(`React to this embed with the corresponding emoji that relates to your gender!\n👦︱**Male**\n👧︱**Female**\n❓︱**Other**`)
+      .setDescription(`
+        React to this embed with the corresponding emoji that relates to your gender!
+
+        👦︱**Male**
+        👧︱**Female**
+        ❓︱**Other**
+      `)
       .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
     // Send the gender embed and fetch the message
@@ -78,7 +103,14 @@ module.exports = {
     const troopEmbed = new EmbedBuilder()
     .setColor('Blue')
     .setTitle('What troop type will you play as? 🪖')
-    .setDescription(`React to this embed with the corresponding emoji that relates to your troop type!\n⚔️︱**Infantry**\n🐎︱**Cavalry**\n🏹︱**Archers**\n🚜︱**Siege**`)
+    .setDescription(`
+      React to this embed with the corresponding emoji that relates to your troop type!
+
+      ⚔️︱**Infantry**
+      🐎︱**Cavalry**
+      🏹︱**Archers**
+      🚜︱**Siege**
+    `)
     .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
   // Send the troop embed and fetch the message

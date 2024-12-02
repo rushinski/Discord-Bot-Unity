@@ -3,7 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 module.exports = {
   admin: true,
   data: new SlashCommandBuilder()
-    .setName('send-rules')
+    .setName('rules-send')
     .setDescription('Sends the server rules.'),
 
   async execute(interaction) {
