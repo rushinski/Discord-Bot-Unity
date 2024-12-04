@@ -45,7 +45,7 @@ module.exports = {
 
         // Create a giveaway embed
         const giveawayEmbed = new EmbedBuilder() // Use EmbedBuilder instead of MessageEmbed
-            .setTitle(`${title}`)
+            .setTitle(`${title} 🎉`)
             .setDescription(`Prize: **${prize}**\nNumber of winners: **${winnersCount}**\nEnds at: **${endTimeUTC}** (UTC)`)
             .setColor('Green')
             .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });

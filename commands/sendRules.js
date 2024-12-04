@@ -8,7 +8,7 @@ module.exports = {
 
   async execute(interaction) {
     const verifyEmbed = new EmbedBuilder()
-      .setTitle('Server Rules')
+      .setTitle('Server Rules 📜')
       .setDescription(
         '**The server is pretty chill but obviously there has to be some rules:**\n' +
         '1. **Respect others.**\n' +

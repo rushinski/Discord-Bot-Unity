@@ -14,7 +14,7 @@ module.exports = {
 
     const welcomeEmbed = new EmbedBuilder()
       .setColor('Green')
-      .setTitle('Welcome to THE ORDER OF THE CRIMSON MOON!')
+      .setTitle(`Welcome to THE ORDER OF THE CRIMSON MOON‼️`)
       .setDescription(
         `Hey **${member.user.username}**, we're glad to have you here! To get started:\n` +
         `- First check out <#1245565013457113138> for the server's rules and info.\n` +
