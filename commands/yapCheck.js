@@ -33,19 +33,25 @@ module.exports = {
     let embedDescription;
 
     if (!nextLevel) {
-      embedDescription = `You're at the highest level: **${currentLevel.level}**! 🎉 You're a legend among yapper-kind.`;
-    } else {
-      const progress = Math.min(1, user.messages / nextLevel.messages); // Cap at 100%
-      const percentage = Math.floor(progress * 100);
+      const progressToMax = user.messages / levels[levels.length - 1].messages;
+      const percentage = Math.min(100, Math.floor(progressToMax * 100));
 
-      embedDescription = `You're currently at **${currentLevel.level}** with **${user.messages} messages**.\n\nYou're **${percentage}% of the way** to your next level. Keep yapping to see what's next!`;
+      embedDescription = `You're at the highest level: **${currentLevel.level}**! 🎉 You're a legend among yapper-kind.\n\nYou've achieved **${percentage}%** of the max messages for this system. Truly unstoppable!`;
+    } else {
+      const progressToNext = Math.min(1, user.messages / nextLevel.messages);
+      const percentageToNext = Math.floor(progressToNext * 100);
+
+      const progressToMax = user.messages / levels[levels.length - 1].messages;
+      const percentageToMax = Math.min(100, Math.floor(progressToMax * 100));
+
+      embedDescription = `You're currently at **${currentLevel.level}** with **${user.messages} messages**.\n\nYou're **${percentageToNext}% of the way** to your next level.\n\nOverall, you've completed **${percentageToMax}%** of the journey to becoming the ultimate yapper!`;
     }
 
     const yapCheckEmbed = new EmbedBuilder()
-      .setTitle('📊 Your Yap Progress')
+      .setTitle('Your Yap Progress 📊')
       .setDescription(embedDescription)
       .setColor(0x00ff00) // Green
-      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' })
+      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
     await interaction.reply({ embeds: [yapCheckEmbed] });
   },
