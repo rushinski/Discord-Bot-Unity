@@ -8,6 +8,7 @@ const client = new Client({
         'GuildMessages',
         'MessageContent',
         'GuildMessageReactions',
+        'MessageContent',
     ]
 });
 

@@ -15,7 +15,7 @@ const openTickets = new Map(); // Map to store userId and their ticket data
 const UPPER_TICKET_SUPPORT_ROLE = '1306333653608960082'; // Upper Ticket Support Role
 const GENERAL_SUPPORT_ROLE = '1306333607018893322'; // General Ticket Support Role
 const TRANSCRIPT_CHANNEL_ID = '1307946220609605783'; // Transcript Channel ID
-const TICKET_CATEGORY_ID = '1280301664514867292'; // Replace with your ticket category ID
+const TICKET_CATEGORY_ID = '1316552990211182642'; // Replace with your ticket category ID
 
 module.exports = {
   name: 'interactionCreate',
