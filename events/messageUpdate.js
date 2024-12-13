@@ -5,8 +5,8 @@ module.exports = {
   name: 'messageUpdate',
   async execute(oldMessage, newMessage) {
     // Ensure this runs when a message is edited
-    if (oldMessage.content === newMessage.content) {
-      return; // No content change, skip
+    if (oldMessage.content === newMessage.content || oldMessage.author.bot) {
+      return; // No content change or message from a bot, skip
     }
 
     // Get the log channel ID from the database
@@ -25,7 +25,7 @@ module.exports = {
         { name: 'Old Message', value: oldMessage.content || 'No content' },
         { name: 'New Message', value: newMessage.content || 'No content' }
       )
-      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' })
+      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
       
     // Send the embed to the log channel
     logChannel.send({ embeds: [embed] });
