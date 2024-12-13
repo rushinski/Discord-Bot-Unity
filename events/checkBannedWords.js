@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const levenshtein = require('fast-levenshtein');
 const bannedWords = require('../data/bannedWords'); // Import banned words
 const Infractions = require('../schemas/infractions'); // Import infractions schema
-const MessageLogChannel = require('../schemas/config'); // Import schema for log channel ID
+const GuildConfig = require('../schemas/config'); // Import schema for log channel ID
 
 // Function to check if a word matches a banned word (fuzzy matching)
 function isSimilar(word, messageContent, threshold = 0.8) {
@@ -49,26 +49,28 @@ module.exports = {
       content: `⚠️ <@${userId}>, you said a no no word! This is strike ${userInfractions.strikes}/3.`,
     });
 
-    // Log the infraction to a specific channel
-    const logChannelData = await MessageLogChannel.findOne({ guildId: guild.id });
-    const logChannel = logChannelData
-      ? guild.channels.cache.get(logChannelData.channelId)
-      : null;
+    // Get the log channel ID from the database
+    const logChannelData = await GuildConfig.findOne({ guildId: guild.id });
+    if (!logChannelData || !logChannelData.moderationLogChannel) return;
 
-    if (logChannel) {
-      const embed = new EmbedBuilder()
-        .setTitle('Banned Word Detected')
-        .setColor('Red')
-        .addFields(
-          { name: 'User', value: `${message.author.tag} (<@${userId}>)` },
-          { name: 'Message Content', value: message.content || 'No content' },
-          { name: 'Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>` },
-          { name: 'Strikes', value: `${userInfractions.strikes}/3` }
-        )
-        .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+    // Get the log channel using the stored ID
+    const logChannel = guild.channels.cache.get(logChannelData.moderationLogChannel);
+    if (!logChannel) return;
 
-      await logChannel.send({ embeds: [embed] }).catch(() => null);
-    }
+    // Create an embed for the banned word detection
+    const embed = new EmbedBuilder()
+      .setTitle('Banned Word Detected')
+      .setColor('Red')
+      .addFields(
+        { name: 'User', value: `${message.author.tag} (<@${userId}>)` },
+        { name: 'Message Content', value: message.content || 'No content' },
+        { name: 'Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>` },
+        { name: 'Strikes', value: `${userInfractions.strikes}/3` }
+      )
+      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+
+    // Send the embed to the log channel
+    logChannel.send({ embeds: [embed] }).catch(() => null);
 
     // Timeout user if they reach 3 strikes
     if (userInfractions.strikes >= 3) {

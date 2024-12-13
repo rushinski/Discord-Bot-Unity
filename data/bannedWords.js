@@ -14,6 +14,38 @@ module.exports = [
   'nigga s',
   'n i g g a s',
 
+  'nibber',
+  'n ibber',
+  'ni bber',
+  'nib ber',
+  'nibb er',
+  'nibbe r',
+  'n i b b e r',
+
+  'nibbers',
+  'n ibbers',
+  'ni bbers',
+  'nib bers',
+  'nibb ers',
+  'nibbe rs',
+  'nibber s',
+  'n i b b e r s',
+
+  'nibba',
+  'n ibba',
+  'ni bba',
+  'nib ba',
+  'nibb a',
+  'n i b b a',
+
+  'nibbas',
+  'n ibbas',
+  'ni bbas',
+  'nib bas',
+  'nibb as',
+  'nibba s',
+  'n i b b a s',
+
   'niga',
 
   'nigger',

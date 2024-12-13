@@ -1,4 +1,5 @@
 const { Events, EmbedBuilder } = require('discord.js');
+const Config = require('../schemas/config'); // Import the MongoDB schema for config
 
 module.exports = {
   name: Events.GuildMemberAdd,
@@ -6,7 +7,13 @@ module.exports = {
   async execute(member) {
     if (!member.guild) return console.log('Guild is undefined');
 
-    const welcomeChannelId = '1245565011942834226';
+    // Fetch the configuration from MongoDB
+    const configData = await Config.findOne({ guildId: member.guild.id });
+    if (!configData || !configData.welcomeChannel) {
+      return console.log('Welcome channel ID not found in the database');
+    }
+
+    const welcomeChannelId = configData.welcomeChannel;
     const memberCountChannelId = '1300291093186744412'; // Replace with your member count channel ID
     const channel = member.guild.channels.cache.get(welcomeChannelId);
 
@@ -44,6 +51,5 @@ module.exports = {
     } catch (error) {
       console.error('Failed to update member count:', error);
     }
-    
   }
 };

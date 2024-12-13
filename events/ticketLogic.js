@@ -12,15 +12,11 @@ const {
 const TicketTranscript = require('../schemas/ticketTranscript'); // Adjust the path if necessary
 const openTickets = new Map(); // Map to store userId and their ticket data
 
-const UPPER_TICKET_SUPPORT_ROLE = '1306333653608960082'; // Upper Ticket Support Role
-const GENERAL_SUPPORT_ROLE = '1306333607018893322'; // General Ticket Support Role
-const TRANSCRIPT_CHANNEL_ID = '1307946220609605783'; // Transcript Channel ID
-const TICKET_CATEGORY_ID = '1316552990211182642'; // Replace with your ticket category ID
+const GuildConfig = require('../schemas/config'); // Assuming you have the schema for guild config
 
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
-    // Handle ticket type selection
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticketType') {
       interaction.client.userSelectedTicketType = interaction.values[0];
 
@@ -41,7 +37,6 @@ module.exports = {
       await interaction.showModal(modal);
     }
 
-    // Handle ticket description modal submission
     if (interaction.isModalSubmit() && interaction.customId === 'ticketDescriptionModal') {
       const ticketType = interaction.client.userSelectedTicketType;
 
@@ -61,17 +56,22 @@ module.exports = {
       ];
 
       if (ticketType !== 'application') {
-        // Allow General Support for non-application tickets
         permissions.push({
           id: GENERAL_SUPPORT_ROLE,
           allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
         });
       }
 
+      // Fetch guild config for category and transcript channel IDs
+      const guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
+      const createdTicketCategory = guildConfig?.createdTicketCategory;
+      const ticketTranscriptsChannel = guildConfig?.ticketTranscriptsChannel;
+
+      // Create the ticket channel
       const ticketChannel = await interaction.guild.channels.create({
         name: `ticket-${interaction.user.username}`,
         type: ChannelType.GuildText,
-        parent: TICKET_CATEGORY_ID,
+        parent: createdTicketCategory || TICKET_CATEGORY_ID, // Use DB value if available, else fallback
         permissionOverwrites: permissions,
       });
 
@@ -119,7 +119,6 @@ module.exports = {
       await interaction.reply({ content: `Ticket created! Check ${ticketChannel}`, ephemeral: true });
     }
 
-    // Handle ticket closure
     if (interaction.isButton() && interaction.customId === 'closeTicket') {
       if (interaction.channel && interaction.channel.name.startsWith('ticket-')) {
         const channel = interaction.channel;
@@ -164,8 +163,8 @@ module.exports = {
           }
         }
 
-        // Save transcript to Discord
-        const transcriptChannel = interaction.guild.channels.cache.get(TRANSCRIPT_CHANNEL_ID);
+        // Send transcript to Discord
+        const transcriptChannel = interaction.guild.channels.cache.get(ticketTranscriptsChannel || TRANSCRIPT_CHANNEL_ID); // Use DB value if available, else fallback
         if (transcriptChannel) {
           const transcriptEmbed = new EmbedBuilder()
             .setColor('DarkBlue')
