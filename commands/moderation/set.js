@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ChannelType } = require('discord.js'); // Import ChannelType
 const GuildConfig = require('../../schemas/config'); // Unified schema
 
 module.exports = {
@@ -6,72 +6,63 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('set')
     .setDescription('Configure various log channels and categories')
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('moderation-log')
-        .setDescription('Banned words, edits, and deletes go here')
-        .addChannelOption(option =>
-          option
-            .setName('channel')
-            .setDescription('The channel to log moderation events')
-            .setRequired(true)
+    .addStringOption(option =>
+      option.setName('field')
+        .setDescription('Select the field to configure')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Moderation Log (Text Channel)', value: 'moderation-log' },
+          { name: 'Ticket Transcripts (Text Channel)', value: 'ticket-transcripts' },
+          { name: 'Created Ticket Category (Category)', value: 'created-ticket-category' },
+          { name: 'Leave Log (Text Channel)', value: 'leave-log' },
+          { name: 'Welcome Channel (Text Channel)', value: 'welcome-channel' },
         )
     )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('ticket-transcripts-log')
-        .setDescription('Set where ticket transcripts are logged')
-        .addChannelOption(option =>
-          option
-            .setName('channel')
-            .setDescription('The channel to log ticket transcripts')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('created-ticket-category')
-        .setDescription('Set the category for created tickets')
-        .addChannelOption(option =>
-          option
-            .setName('category')
-            .setDescription('The category for created tickets')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('leave-log')
-        .setDescription('Set the channel to log when members leave')
-        .addChannelOption(option =>
-          option
-            .setName('channel')
-            .setDescription('The channel to log member leave events')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('welcome-channel')
-        .setDescription('Set the channel to send welcome messages')
-        .addChannelOption(option =>
-          option
-            .setName('channel')
-            .setDescription('The channel to send welcome messages')
-            .setRequired(true)
-        )
+    .addStringOption(option =>
+      option.setName('channel-id')
+        .setDescription('Enter the ID of the channel or category')
+        .setRequired(true)
     ),
 
   async execute(interaction) {
-    const subcommand = interaction.options.getSubcommand();
-    const channel = interaction.options.getChannel('channel');
+    const field = interaction.options.getString('field');
+    const channelId = interaction.options.getString('channel-id');
 
-    // Check if the channel is provided
+    // Check if the provided ID matches the required type (Text Channel or Category)
+    const channel = interaction.guild.channels.cache.get(channelId);
     if (!channel) {
       return interaction.reply({
-        content: 'You must provide a valid channel.',
+        content: `Invalid channel/category ID provided. Please ensure the ID is correct.`,
         ephemeral: true,
       });
+    }
+
+    // Validate the channel type for each field
+    switch (field) {
+      case 'moderation-log':
+      case 'ticket-transcripts':
+      case 'leave-log':
+      case 'welcome-channel':
+        if (channel.type !== ChannelType.GuildText) {
+          return interaction.reply({
+            content: `The selected field (${field}) requires a **Text Channel**. Please provide a valid Text Channel ID.`,
+            ephemeral: true,
+          });
+        }
+        break;
+      case 'created-ticket-category':
+        if (channel.type !== ChannelType.GuildCategory) {
+          return interaction.reply({
+            content: `The selected field (${field}) requires a **Category**. Please provide a valid Category ID.`,
+            ephemeral: true,
+          });
+        }
+        break;
+      default:
+        return interaction.reply({
+          content: 'Invalid field selected.',
+          ephemeral: true,
+        });
     }
 
     // Fetch or initialize the guild's configuration
@@ -80,56 +71,32 @@ module.exports = {
       guildConfig = new GuildConfig({ guildId: interaction.guild.id });
     }
 
-    // Update the appropriate field based on the subcommand
-    switch (subcommand) {
+    // Update the appropriate field in the guild configuration
+    switch (field) {
       case 'moderation-log':
-        guildConfig.moderationLogChannel = channel.id;
-        await interaction.reply({
-          content: `Moderation logs will now be sent to ${channel}.`,
-          ephemeral: true,
-        });
+        guildConfig.moderationLogChannel = channelId;
         break;
-
-      case 'ticket-transcripts-log':
-        guildConfig.ticketTranscriptsChannel = channel.id;
-        await interaction.reply({
-          content: `Ticket transcripts will now be logged in ${channel}.`,
-          ephemeral: true,
-        });
+      case 'ticket-transcripts':
+        guildConfig.ticketTranscriptsChannel = channelId;
         break;
-
       case 'created-ticket-category':
-        guildConfig.createdTicketCategory = channel.id;
-        await interaction.reply({
-          content: `Created tickets will now be placed under the ${channel} category.`,
-          ephemeral: true,
-        });
+        guildConfig.createdTicketCategory = channelId;
         break;
-
       case 'leave-log':
-        guildConfig.leaveLogChannel = channel.id;
-        await interaction.reply({
-          content: `Member leave logs will now be sent to ${channel}.`,
-          ephemeral: true,
-        });
+        guildConfig.leaveLogChannel = channelId;
         break;
-
       case 'welcome-channel':
-        guildConfig.welcomeChannel = channel.id;
-        await interaction.reply({
-          content: `Welcome messages will now be sent to ${channel}.`,
-          ephemeral: true,
-        });
+        guildConfig.welcomeChannel = channelId;
         break;
-
-      default:
-        await interaction.reply({
-          content: 'Invalid subcommand.',
-          ephemeral: true,
-        });
     }
 
     // Save the updated configuration
     await guildConfig.save();
+
+    // Reply with a confirmation message
+    await interaction.reply({
+      content: `Successfully updated **${field.replace(/-/g, ' ')}** with ID \`${channelId}\`.`,
+      ephemeral: true,
+    });
   },
 };
