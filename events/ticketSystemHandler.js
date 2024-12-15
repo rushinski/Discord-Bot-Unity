@@ -180,9 +180,9 @@ module.exports = {
     if (interaction.isButton() && interaction.customId === 'closeTicket') {
       if (interaction.channel && interaction.channel.name.startsWith('ticket-')) {
         const channel = interaction.channel;
-
+    
         await interaction.reply({ content: 'Closing ticket and saving transcript...', ephemeral: true });
-
+    
         let guildConfig;
         try {
           guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
@@ -199,14 +199,16 @@ module.exports = {
             ephemeral: true,
           });
         }
-
+    
         const messages = [];
         let lastMessageId = null;
-
-        while (true) {
-          const fetchedMessages = await channel.messages.fetch({ limit: 100, before: lastMessageId });
+    
+        // Fetch messages in batches
+        let fetchedMessages;
+        do {
+          fetchedMessages = await channel.messages.fetch({ limit: 100, before: lastMessageId });
           if (fetchedMessages.size === 0) break;
-
+    
           fetchedMessages.forEach((msg) => {
             messages.push({
               author: msg.author.tag,
@@ -214,10 +216,12 @@ module.exports = {
               timestamp: msg.createdAt,
             });
           });
-
+    
+          // Update lastMessageId to the ID of the last message fetched
           lastMessageId = fetchedMessages.last()?.id;
-        }
-
+    
+        } while (fetchedMessages.size === 100);  // Continue fetching if 100 messages were returned
+    
         const ticketData = openTickets.get(interaction.user.id);
         if (ticketData) {
           const transcript = new TicketTranscript({
@@ -227,14 +231,14 @@ module.exports = {
             description: ticketData.description,
             messages,
           });
-
+    
           try {
             await transcript.save();
           } catch (error) {
             console.error('Error saving transcript:', error);
           }
         }
-
+    
         const transcriptChannel = interaction.guild.channels.cache.get(guildConfig.ticketTranscriptsChannel);
         if (!transcriptChannel) {
           return interaction.followUp({
@@ -243,26 +247,24 @@ module.exports = {
             ephemeral: true,
           });
         }
-
+    
         const transcriptEmbed = new EmbedBuilder()
           .setColor('DarkBlue')
           .setTitle(`Transcript: ${channel.name}`)
           .setDescription(
-            `**Ticket Type:** ${ticketData.ticketType}
-` +
-              `**Created By:** <@${interaction.user.id}>
-` +
-              `**Description:** ${ticketData.description}`
+            `**Ticket Type:** null` + // Fix
+            `**Created By:** <@${interaction.user.id}>\n` +
+            `**Description:** null` // Fix
           )
           .setFooter({ text: 'Transcript generated on' })
           .setTimestamp();
-
+    
         await transcriptChannel.send({ embeds: [transcriptEmbed] });
-
+    
         const transcriptText = messages
           .map((msg) => `[${msg.timestamp.toISOString()}] ${msg.author}: ${msg.content}`)
           .join('\n');
-
+    
         if (transcriptText.length <= 2000) {
           await transcriptChannel.send(`\`\`\`\n${transcriptText}\n\`\`\``);
         } else {
@@ -271,12 +273,12 @@ module.exports = {
             await transcriptChannel.send(`\`\`\`\n${chunk}\n\`\`\``);
           }
         }
-
+    
         openTickets.delete(interaction.user.id);
         setTimeout(() => channel.delete().catch(console.error), 3000);
       } else {
         await interaction.reply({ content: 'This is not a ticket channel!', ephemeral: true });
       }
     }
-  },
-};
+  }
+}    

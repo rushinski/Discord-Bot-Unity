@@ -5,8 +5,11 @@ module.exports = {
   name: 'messageUpdate',
   async execute(oldMessage, newMessage) {
     // Ensure this runs when a message is edited
-    if (oldMessage.content === newMessage.content || oldMessage.author.bot) {
-      return; // No content change or message from a bot, skip
+    if (
+      oldMessage.content === newMessage.content || // No content change
+      oldMessage.author.bot // Ignore bot messages
+    ) {
+      return;
     }
 
     // Fetch guild configuration
@@ -17,20 +20,28 @@ module.exports = {
     const logChannel = oldMessage.guild.channels.cache.get(guildConfig.moderationLogChannel);
     if (!logChannel) return;
 
+    // Handle missing or empty content gracefully
+    const oldContent = oldMessage.content?.trim() || 'No content';
+    const newContent = newMessage.content?.trim() || 'No content';
+
     // Create an embed for the edited message
     const embed = new EmbedBuilder()
       .setTitle('Message Edited')
       .setColor('Yellow')
       .addFields(
         { name: 'Author', value: `${oldMessage.author.tag} (<@${oldMessage.author.id}>)` },
-        { name: 'Old Message', value: oldMessage.content || 'No content' },
-        { name: 'New Message', value: newMessage.content || 'No content' },
+        { name: 'Old Message', value: oldContent, inline: false },
+        { name: 'New Message', value: newContent, inline: false },
         { name: 'Channel', value: `<#${oldMessage.channel.id}>`, inline: true }
       )
-      .setTimestamp(new Date())
+      .setTimestamp()
       .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
 
     // Send the embed to the log channel
-    logChannel.send({ embeds: [embed] }).catch(console.error);
+    try {
+      await logChannel.send({ embeds: [embed] });
+    } catch (error) {
+      console.error('Failed to send the embed:', error);
+    }
   },
 };
