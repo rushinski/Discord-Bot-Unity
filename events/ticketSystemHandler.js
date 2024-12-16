@@ -97,6 +97,7 @@ module.exports = {
 
       openTickets.set(interaction.user.id, {
         channelId: ticketChannel.id,
+        userId: interaction.user.id, // Storing user.id
         ticketType,
         description: ticketDescription,
         createdAt: Date.now(), // Track creation time
@@ -141,7 +142,7 @@ module.exports = {
       await message.pin();
       await interaction.reply({ content: `Ticket created! Check ${ticketChannel}`, ephemeral: true });
     }
-
+    
     if (interaction.isButton() && interaction.customId === 'pingSupport') {
       const ticketData = openTickets.get(interaction.user.id);
 
@@ -217,33 +218,38 @@ module.exports = {
             });
           });
     
-          // Update lastMessageId to the ID of the last message fetched
           lastMessageId = fetchedMessages.last()?.id;
     
-        } while (fetchedMessages.size === 100);  // Continue fetching if 100 messages were returned
+        } while (fetchedMessages.size === 100);
     
-        const ticketData = openTickets.get(interaction.user.id);
-        if (ticketData) {
-          const transcript = new TicketTranscript({
-            userId: interaction.user.id,
-            username: interaction.user.tag,
-            ticketType: ticketData.ticketType,
-            description: ticketData.description,
-            messages,
+        // Retrieve ticket data by channel ID
+        const ticketData = Array.from(openTickets.values()).find(ticket => ticket.channelId === channel.id);
+    
+        if (!ticketData) {
+          return interaction.followUp({
+            content: 'No ticket data found for this channel. Transcript may be incomplete.',
+            ephemeral: true,
           });
+        }
     
-          try {
-            await transcript.save();
-          } catch (error) {
-            console.error('Error saving transcript:', error);
-          }
+        const transcript = new TicketTranscript({
+          userId: ticketData.userId, // User who created the ticket
+          username: interaction.guild.members.cache.get(ticketData.userId)?.user.tag || 'Unknown',
+          ticketType: ticketData.ticketType,
+          description: ticketData.description,
+          messages,
+        });
+    
+        try {
+          await transcript.save();
+        } catch (error) {
+          console.error('Error saving transcript:', error);
         }
     
         const transcriptChannel = interaction.guild.channels.cache.get(guildConfig.ticketTranscriptsChannel);
         if (!transcriptChannel) {
           return interaction.followUp({
-            content:
-              'Transcript channel missing. Please ensure it is properly configured with `/set` command.',
+            content: 'Transcript channel missing. Please ensure it is properly configured with `/set` command.',
             ephemeral: true,
           });
         }
@@ -252,9 +258,9 @@ module.exports = {
           .setColor('DarkBlue')
           .setTitle(`Transcript: ${channel.name}`)
           .setDescription(
-            `**Ticket Type:** null` + // Fix
-            `**Created By:** <@${interaction.user.id}>\n` +
-            `**Description:** null` // Fix
+            `**Ticket Type:** ${ticketData.ticketType}\n` +
+            `**Created By:** <@${ticketData.userId}>\n` +
+            `**Description:** ${ticketData.description}`
           )
           .setFooter({ text: 'Transcript generated on' })
           .setTimestamp();
@@ -274,11 +280,11 @@ module.exports = {
           }
         }
     
-        openTickets.delete(interaction.user.id);
+        openTickets.delete(ticketData.userId);
         setTimeout(() => channel.delete().catch(console.error), 3000);
       } else {
         await interaction.reply({ content: 'This is not a ticket channel!', ephemeral: true });
       }
     }
   }
-}    
+}
