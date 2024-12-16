@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../../schemas/userSchema');
 const levels = require('../../data/levels');
+const { recalculateLevel } = require('../../utils/levelUtils');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -20,10 +21,10 @@ module.exports = {
       });
     }
 
-    // Dynamically recalculate the user's current level based on their message count
-    const { finalLevel } = getLevelUpMessages(user);
-    user.level = finalLevel;
-    await user.save(); // Persist the updated level
+    // Recalculate and update the user's level dynamically
+    const previousLevel = user.level;
+    recalculateLevel(user, levels);
+    await user.save(); // Persist the updated level if it changed
 
     const currentLevelIndex = levels.findIndex(l => l.level === user.level);
     const currentLevel = levels[currentLevelIndex];
@@ -38,15 +39,12 @@ module.exports = {
 
       embedDescription = `You're at the highest level: **${currentLevel.level}**! 🎉 You're a legend among yapper-kind.\n\nYou've achieved **${percentageToMax}%** of the max messages for this system. Truly unstoppable!`;
     } else {
-      // Calculate progress towards the next level
-      const progressToNext = Math.min(1, user.messages / nextLevel.messages);
-      const percentageToNext = Math.floor(progressToNext * 100);
+      // Calculate progress towards the next level without revealing its details
+      const messagesRequired = nextLevel.messages - currentLevel.messages;
+      const progress = (user.messages - currentLevel.messages) / messagesRequired;
+      const percentageToNext = Math.min(100, Math.floor(progress * 100));
 
-      // Calculate overall progress to the highest level
-      const progressToMax = user.messages / levels[levels.length - 1].messages;
-      const percentageToMax = Math.min(100, Math.floor(progressToMax * 100));
-
-      embedDescription = `You're currently at **${currentLevel.level}** with **${user.messages} messages**.\n\nYou're **${percentageToNext}%** of the way to your next level (**${nextLevel.level}**, **${nextLevel.messages} messages**).\n\nOverall, you've completed **${percentageToMax}%** of the journey to becoming the ultimate yapper!`;
+      embedDescription = `You're currently at **${currentLevel.level}** with **${user.messages} messages**.\n\nYou've completed **${percentageToNext}%** of your progress towards the next goal. Keep yapping to reach the next milestone!`;
     }
 
     const yapCheckEmbed = new EmbedBuilder()
@@ -57,21 +55,4 @@ module.exports = {
 
     return interaction.reply({ embeds: [yapCheckEmbed] });
   },
-};
-
-// Utility Function for Dynamic Level Calculation
-const getLevelUpMessages = (user) => {
-  const levelUpMessages = [];
-  let currentLevel = user.level;
-
-  for (const level of levels) {
-    if (user.messages >= level.messages && currentLevel < level.level) {
-      currentLevel = level.level;
-    }
-  }
-
-  return {
-    messages: levelUpMessages, // Not used here, but available for consistency
-    finalLevel: currentLevel,
-  };
 };
