@@ -8,7 +8,7 @@ module.exports = {
   admin: true,
   data: new SlashCommandBuilder()
     .setName('add-messages')
-    .setDescription('Add messages to a user for testing.')
+    .setDescription('Add messages to a user\'s total.')
     .addUserOption(option =>
       option.setName('target')
         .setDescription('The user to add messages to.')
