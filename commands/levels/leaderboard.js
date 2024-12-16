@@ -23,7 +23,7 @@ module.exports = {
       .setTitle('🏆 Server Leaderboard 🏆')
       .setDescription(leaderboard)
       .setColor(0xffd700) // Gold
-      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+      .setFooter({ text: 'Use /yap-check to see your progress!' });
 
     await interaction.reply({ embeds: [leaderboardEmbed] });
   },
