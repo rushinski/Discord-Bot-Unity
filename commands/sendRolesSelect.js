@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const RoleReactionMessage = require('../schemas/RoleReactionMessage');
-const mongoose = require('mongoose');
 
 module.exports = {
   admin: true,
@@ -9,7 +8,7 @@ module.exports = {
     .setDescription('Sends all the role selection embeds.'),
 
   async execute(interaction) {
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true }); // Make the reply ephemeral
 
     const embedsAndReactions = [
       {
@@ -92,9 +91,28 @@ module.exports = {
     ];
 
     for (const { embed, type, reactions } of embedsAndReactions) {
+      // Check if a message with this type exists
+      const existingMessage = await RoleReactionMessage.findOne({
+        messageType: type,
+        guildId: interaction.guild.id,
+      });
+
+      // If a message exists, delete it
+      if (existingMessage) {
+        const channel = await interaction.guild.channels.fetch(existingMessage.channelId);
+        if (channel) {
+          const oldMessage = await channel.messages.fetch(existingMessage.messageId).catch(() => null);
+          if (oldMessage) await oldMessage.delete();
+        }
+
+        // Remove from the database
+        await RoleReactionMessage.deleteOne({ _id: existingMessage._id });
+      }
+
+      // Send the new message
       const message = await interaction.channel.send({ embeds: [embed] });
-      
-      // Save to database
+
+      // Save the new message to the database
       await RoleReactionMessage.create({
         messageId: message.id,
         messageType: type,
@@ -102,12 +120,12 @@ module.exports = {
         guildId: interaction.guild.id,
       });
 
+      // Add reactions to the message
       for (const reaction of reactions) {
         await message.react(reaction);
       }
     }
 
-    await interaction.editReply('Role selection embeds have been sent and saved!');
+    await interaction.editReply('Role selection embeds have been sent and saved!'); // Confirmation is ephemeral
   },
 };
-
