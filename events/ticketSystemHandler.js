@@ -105,7 +105,7 @@ module.exports = {
 
       const ticketEmbed = new EmbedBuilder()
         .setColor('Blue')
-        .setTitle(`🎟️ ${ticketType.charAt(0).toUpperCase() + ticketType.slice(1)} Ticket`)
+        .setTitle(`${ticketType.charAt(0).toUpperCase() + ticketType.slice(1)} Ticket 🎟️`)
         .setDescription(
           `**A new ticket has been opened!**\n\n` +
           `📝 **Reason:** ${ticketType}\n` +
