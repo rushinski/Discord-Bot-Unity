@@ -7,13 +7,13 @@ module.exports = {
     // Ensure this runs when a message is edited
     if (
       oldMessage.content === newMessage.content || // No content change
-      oldMessage.author.bot // Ignore bot messages
+      oldMessage.author?.bot // Ignore bot messages
     ) {
       return;
     }
 
     // Fetch guild configuration
-    const guildConfig = await GuildConfig.findOne({ guildId: oldMessage.guild.id });
+    const guildConfig = await GuildConfig.findOne({ guildId: oldMessage.guild?.id });
     if (!guildConfig || !guildConfig.moderationLogChannel) return;
 
     // Get the log channel using the stored ID
@@ -24,15 +24,18 @@ module.exports = {
     const oldContent = oldMessage.content?.trim() || 'No content';
     const newContent = newMessage.content?.trim() || 'No content';
 
-    // Create an embed for the edited message
+    // Ensure content is within Discord's character limits
+    const MAX_FIELD_LENGTH = 1024;
+    const truncate = (content) => content.length > MAX_FIELD_LENGTH ? content.slice(0, MAX_FIELD_LENGTH - 3) + '...' : content;
+
     const embed = new EmbedBuilder()
       .setTitle('Message Edited')
       .setColor('Yellow')
       .addFields(
-        { name: 'Author', value: `${oldMessage.author.tag} (<@${oldMessage.author.id}>)` },
-        { name: 'Old Message', value: oldContent, inline: false },
-        { name: 'New Message', value: newContent, inline: false },
-        { name: 'Channel', value: `<#${oldMessage.channel.id}>`, inline: true }
+        { name: 'Author', value: `${oldMessage.author?.tag || 'Unknown User'} (<@${oldMessage.author?.id || 'Unknown ID'}>)` },
+        { name: 'Old Message', value: truncate(oldContent), inline: false },
+        { name: 'New Message', value: truncate(newContent), inline: false },
+        { name: 'Channel', value: `<#${oldMessage.channel?.id || 'Unknown Channel'}>`, inline: true }
       )
       .setTimestamp()
       .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
