@@ -9,11 +9,11 @@ const {
   TextInputStyle,
   EmbedBuilder,
 } = require('discord.js');
-const TicketTranscript = require('../schemas/ticketTranscript'); // Adjust the path if necessary
-const GuildConfig = require('../schemas/config'); // Schema for guild config
-const openTickets = new Map();
+const TicketTranscript = require('../schemas/ticketTranscript');
+const GuildConfig = require('../schemas/config');
+const Ticket = require('../schemas/ticket');
 
-const UPPER_TICKET_SUPPORT_ROLE = '1306333653608960082'; // Adjust for your server
+const UPPER_TICKET_SUPPORT_ROLE = '1306333653608960082';
 const GENERAL_SUPPORT_ROLE = '1306333607018893322';
 const pingCooldown = new Map();
 
@@ -43,7 +43,14 @@ module.exports = {
     if (interaction.isModalSubmit() && interaction.customId === 'ticketDescriptionModal') {
       const ticketType = interaction.client.userSelectedTicketType;
 
-      if (openTickets.has(interaction.user.id)) {
+      // Check if the user already has an open ticket in the database
+      const existingTicket = await Ticket.findOne({
+        userId: interaction.user.id,
+        guildId: interaction.guild.id,
+        status: { $ne: 'closed' }, // Only consider tickets that are not closed
+      });
+      
+      if (existingTicket) {
         return interaction.reply({
           content: 'You already have an open ticket. Please close it before creating a new one.',
           ephemeral: true,
@@ -95,13 +102,15 @@ module.exports = {
         permissionOverwrites: permissions,
       });
 
-      openTickets.set(interaction.user.id, {
+      const ticketData = new Ticket({
+        userId: interaction.user.id,
         channelId: ticketChannel.id,
-        userId: interaction.user.id, // Storing user.id
+        guildId: interaction.guild.id,
         ticketType,
         description: ticketDescription,
-        createdAt: Date.now(), // Track creation time
       });
+
+      await ticketData.save().catch(console.error);
 
       const ticketEmbed = new EmbedBuilder()
         .setColor('Blue')
@@ -142,12 +151,11 @@ module.exports = {
       await message.pin();
       await interaction.reply({ content: `Ticket created! Check ${ticketChannel}`, ephemeral: true });
     }
-    
-    if (interaction.isButton() && interaction.customId === 'pingSupport') {
-      const ticketData = openTickets.get(interaction.user.id);
 
+    if (interaction.isButton() && interaction.customId === 'pingSupport') {
+      const ticketData = await Ticket.findOne({ channelId: interaction.channel.id });
       if (!ticketData) {
-        return interaction.reply({ content: 'No open ticket associated with you.', ephemeral: true });
+        return interaction.reply({ content: 'No open ticket associated with this channel.', ephemeral: true });
       }
 
       const now = Date.now();
@@ -155,7 +163,6 @@ module.exports = {
 
       const timeDifference = now - lastPing;
 
-      // Ensure at least 15 minutes since last ping or ticket creation
       if (timeDifference < 15 * 60 * 1000) {
         const remainingMinutes = Math.ceil((15 * 60 * 1000 - timeDifference) / 60000);
         return interaction.reply({
@@ -164,7 +171,6 @@ module.exports = {
         });
       }
 
-      // Update the ping cooldown
       pingCooldown.set(interaction.channel.id, now);
 
       const supportRole = interaction.guild.roles.cache.get(
@@ -204,7 +210,6 @@ module.exports = {
         const messages = [];
         let lastMessageId = null;
     
-        // Fetch messages in batches
         let fetchedMessages;
         do {
           fetchedMessages = await channel.messages.fetch({ limit: 100, before: lastMessageId });
@@ -222,9 +227,7 @@ module.exports = {
     
         } while (fetchedMessages.size === 100);
     
-        // Retrieve ticket data by channel ID
-        const ticketData = Array.from(openTickets.values()).find(ticket => ticket.channelId === channel.id);
-    
+        const ticketData = await Ticket.findOne({ channelId: channel.id });
         if (!ticketData) {
           return interaction.followUp({
             content: 'No ticket data found for this channel. Transcript may be incomplete.',
@@ -232,8 +235,9 @@ module.exports = {
           });
         }
     
+        // Save transcript
         const transcript = new TicketTranscript({
-          userId: ticketData.userId, // User who created the ticket
+          userId: ticketData.userId,
           username: interaction.guild.members.cache.get(ticketData.userId)?.user.tag || 'Unknown',
           ticketType: ticketData.ticketType,
           description: ticketData.description,
@@ -256,35 +260,24 @@ module.exports = {
     
         const transcriptEmbed = new EmbedBuilder()
           .setColor('DarkBlue')
-          .setTitle(`Transcript: ${channel.name}`)
-          .setDescription(
-            `**Ticket Type:** ${ticketData.ticketType}\n` +
-            `**Created By:** <@${ticketData.userId}>\n` +
-            `**Description:** ${ticketData.description}`
-          )
-          .setFooter({ text: 'Transcript generated on' })
-          .setTimestamp();
+          .setTitle(`Ticket Transcript: ${channel.name}`)
+          .setDescription(`**Ticket Type:** ${ticketData.ticketType}\n**User:** <@${ticketData.userId}>\n`)
+          .setFooter({ text: 'Transcript successfully saved.' });
     
         await transcriptChannel.send({ embeds: [transcriptEmbed] });
     
-        const transcriptText = messages
-          .map((msg) => `[${msg.timestamp.toISOString()}] ${msg.author}: ${msg.content}`)
-          .join('\n');
+        // Update ticket status in MongoDB
+        await Ticket.findOneAndUpdate(
+          { channelId: channel.id },
+          { status: 'closed' }, // Mark the ticket as closed
+          { new: true }
+        );
     
-        if (transcriptText.length <= 2000) {
-          await transcriptChannel.send(`\`\`\`\n${transcriptText}\n\`\`\``);
-        } else {
-          const transcriptChunks = transcriptText.match(/[^]{1,1990}(\n|$)/g);
-          for (const chunk of transcriptChunks) {
-            await transcriptChannel.send(`\`\`\`\n${chunk}\n\`\`\``);
-          }
-        }
+        // Optionally delete the ticket document from MongoDB
+        // await Ticket.deleteOne({ channelId: channel.id });
     
-        openTickets.delete(ticketData.userId);
-        setTimeout(() => channel.delete().catch(console.error), 3000);
-      } else {
-        await interaction.reply({ content: 'This is not a ticket channel!', ephemeral: true });
+        await channel.delete();
       }
     }
   }
-}
+}    
