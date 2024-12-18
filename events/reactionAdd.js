@@ -58,9 +58,6 @@ module.exports = {
         '💪': 'Booster',
         '💤': 'Sleeper',
       },
-      verification: {
-        '✅': 'Jumpers',
-      },
     };
 
     const roleName = roleMappings[dbMessage.messageType]?.[emoji.name];
