@@ -103,16 +103,20 @@ module.exports = {
       const buttonRow = new ActionRowBuilder().addComponents(closeButton, pingButton, verifyButton);
 
       // Step 7: Send embed in the new ticket channel
-      const accountCreationDate = `<t:${Math.floor(user.createdAt.getTime() / 1000)}:R>`; // Relative time format
+      const guild = message.guild; // Access the guild from the message object
+      const accountCreationDate = `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`; // Account creation in relative format
+
       const ticketEmbed = new EmbedBuilder()
         .setColor('Blue')
         .setTitle('Verification Ticket 🎟️')
         .setDescription(
           `**A verification ticket has been created!**\n\n👤 **User Info:**\n- **Username:** ${user.tag}\n- **ID:** ${user.id}\n- **Nickname:** ${
             member.nickname || 'No nickname'
-          }\n- **Profile Picture:** [Avatar URL](${user.displayAvatarURL({ dynamic: true })})\n- **Account Created:** ${accountCreationDate}\n\n🔔 **Upper Ticket Support Role has been notified.**\n\nClick the button below to close this ticket when resolved.`
+          }\n- **Account Created:** ${accountCreationDate}\n\n🔔 **Upper Ticket Support Role has been notified.**\n\nClick the button below to close this ticket when resolved.`
         )
-        .setFooter({ text: 'Support Team will assist you shortly.' });
+        .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 1024 })) // Adds the user's profile picture on the right
+        .setFooter({ text: 'Support Team will assist you shortly.', iconURL: guild.iconURL({ dynamic: true }) }) // Use the guild's icon
+        .setTimestamp();
 
       const sentMessage = await ticketChannel.send({
         content: `<@&${UPPER_SUPPORT_ROLE_ID}>`, // Ping upper support role
