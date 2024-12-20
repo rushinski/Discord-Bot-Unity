@@ -147,21 +147,21 @@ module.exports = {
           }
         }
 
-        try {
-          const ticketOwner = await guild.members.fetch(ticket.userId);
-          if (ticketOwner) {
-            const attachment = new AttachmentBuilder(transcriptFilePath);
-            await ticketOwner.send({
-              content:
-                gistUrl
-                  ? `Here is the transcript of your closed ticket: ${gistUrl}`
-                  : 'Here is the transcript of your closed ticket. Thank you for reaching out!',
-              files: gistUrl ? [] : [attachment],
-            });
-          }
-        } catch (err) {
-          console.warn(`Unable to DM user (${ticket.userId}):`, err.message);
-        }
+        // try {
+        //   const ticketOwner = await guild.members.fetch(ticket.userId);
+        //   if (ticketOwner) {
+        //     const attachment = new AttachmentBuilder(transcriptFilePath);
+        //     await ticketOwner.send({
+        //       content:
+        //         gistUrl
+        //           ? `Here is the transcript of your closed ticket: ${gistUrl}`
+        //           : 'Here is the transcript of your closed ticket. Thank you for reaching out!',
+        //       files: gistUrl ? [] : [attachment],
+        //     });
+        //   }
+        // } catch (err) {
+        //   console.warn(`Unable to DM user (${ticket.userId}):`, err.message);
+        // }
 
         ticket.status = 'closed';
         await ticket.save();

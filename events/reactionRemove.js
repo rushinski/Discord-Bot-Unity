@@ -31,11 +31,6 @@ module.exports = {
         '🐋': 'Whale',
         '🦑': 'Kraken',
       },
-      gender: {
-        '👦': 'Male',
-        '👧': 'Female',
-        '❓': 'Other',
-      },
       troop: {
         '⚔️': 'Infantry',
         '🐎': 'Cavalry',
@@ -57,6 +52,7 @@ module.exports = {
       jumperType: {
         '💪': 'Booster',
         '💤': 'Sleeper',
+        '🚀': 'Jumper',
       },
     };
 

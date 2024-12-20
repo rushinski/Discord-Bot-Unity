@@ -18,7 +18,8 @@ module.exports = {
           .setDescription(
             `React to this embed with the corresponding emoji that relates to where you are from!\n🦁︱**Africa**\n🦅︱**North America**\n🦜︱**South America**\n🐂︱**Europe**\n🐼︱**Asia**\n🐨︱**Oceania**\n🐧︱**Antarctica**`
           )
-          .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' }),
+          .setFooter({ text: 'React to gain roles.' })
+          .setTimestamp(),
         type: 'continent',
         reactions: ['🦁', '🦅', '🦜', '🐂', '🐼', '🐨', '🐧'],
       },
@@ -27,22 +28,12 @@ module.exports = {
           .setColor('Blue')
           .setTitle('How much money will you potentially spend monthly? 💵')
           .setDescription(
-            `React to this embed with the corresponding emoji that relates to your potentially monthly spending habits!\n🦐︱**$0**\n🐟︱**$1-150**\n🐬︱**$150-400**\n🦈︱**$400-1000**\n🐋︱**$1000-5000**\n🦑︱**$5000+**`
+            `React to this embed with the corresponding emoji that relates to your potentially monthly spending habits!\n🦐︱**$0**\n🐟︱**$1-200**\n🐬︱**$200-750**\n🦈︱**$750-2000**\n🐋︱**$2000-5000**\n🦑︱**$6000+**`
           )
-          .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' }),
+          .setFooter({ text: 'React to gain roles.' })
+          .setTimestamp(),
         type: 'spender',
         reactions: ['🦐', '🐟', '🐬', '🦈', '🐋', '🦑'],
-      },
-      {
-        embed: new EmbedBuilder()
-          .setColor('Blue')
-          .setTitle('What gender are you? 🧬')
-          .setDescription(
-            `React to this embed with the corresponding emoji that relates to your gender!\n👦︱**Male**\n👧︱**Female**\n❓︱**Other**`
-          )
-          .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' }),
-        type: 'gender',
-        reactions: ['👦', '👧', '❓'],
       },
       {
         embed: new EmbedBuilder()
@@ -51,7 +42,8 @@ module.exports = {
           .setDescription(
             `React to this embed with the corresponding emoji that relates to your troop type!\n⚔️︱**Infantry**\n🐎︱**Cavalry**\n🏹︱**Archers**\n🚜︱**Siege**`
           )
-          .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' }),
+          .setFooter({ text: 'React to gain roles.' })
+          .setTimestamp(),
         type: 'troop',
         reactions: ['⚔️', '🐎', '🏹', '🚜'],
       },
@@ -62,7 +54,8 @@ module.exports = {
           .setDescription(
             `React to this embed with the corresponding emoji that relates to your past experience!\n🥚︱**Brand New Player**\n🐣︱**No KvK Experience**\n1️⃣︱**KvK1**\n2️⃣︱**KvK2**\n3️⃣︱**KvK3**\n⭐︱**Soc**`
           )
-          .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' }),
+          .setFooter({ text: 'React to gain roles.' })
+          .setTimestamp(),
         type: 'experience',
         reactions: ['🥚', '🐣', '1️⃣', '2️⃣', '3️⃣', '⭐'],
       },
@@ -73,7 +66,8 @@ module.exports = {
           .setDescription(
             `React to this embed with the corresponding emoji that relates to your past jumping experience!\n✅︱**Jumped Before**\n❌︱**New Jumper**`
           )
-          .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' }),
+          .setFooter({ text: 'React to gain roles.' })
+          .setTimestamp(),
         type: 'jumped',
         reactions: ['✅', '❌'],
       },
@@ -82,11 +76,12 @@ module.exports = {
           .setColor('Blue')
           .setTitle('Would you like to be a booster or sleeper? 💭')
           .setDescription(
-            `React to this embed with the corresponding emojis if you would like to be either a sleeper, booster, or both. If you are unsure what a [ Sleeper ](https://discord.com/channels/1245050735138308116/1277402678380462080) or [ Booster ](https://discord.com/channels/1245050735138308116/1277402678892167170) is simply click the blue words to learn more. Selecting you want to be a booster does not guarantee you to be a booster.\n💪︱**Booster**\n💤︱**Sleeper**`
+            `"React to this embed with the corresponding emoji to select your role! You can choose multiple roles if you'd like. If you're unsure what a **'Sleeper'** or **'Booster'** is, feel free to ask!\n🚀︱**Jumper**\n💤︱**Sleeper**\n💪︱**Booster**`
           )
-          .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' }),
+          .setFooter({ text: 'React to gain roles.' })
+          .setTimestamp(),
         type: 'jumperType',
-        reactions: ['💪', '💤'],
+        reactions: ['🚀','💤','💪'],
       },
     ];
 
