@@ -84,20 +84,20 @@ module.exports = {
       // Handle "Close Ticket" Button
       if (customId === 'close-ticket') {
         await interaction.deferReply({ ephemeral: true });
-
+      
         ticket = await Ticket.findOne({ channelId: channel.id });
         if (!ticket) {
           return interaction.editReply({
             content: 'This ticket is not found in the database.',
           });
         }
-
+      
         const messages = await fetchChannelMessages(channel);
         const transcriptFilePath = await saveTranscriptToFile(messages, channel);
-
+      
         const guildConfig = await GuildConfig.findOne({ guildId: guild.id });
         const transcriptChannelId = guildConfig?.ticketTranscriptsChannel;
-
+      
         if (transcriptChannelId) {
           const transcriptChannel = guild.channels.cache.get(transcriptChannelId);
           if (transcriptChannel) {
@@ -107,39 +107,48 @@ module.exports = {
               .setTitle('Ticket Transcript')
               .setDescription(`Transcript of the closed ticket **${channel.name}**.`)
               .setFooter({ text: `Closed by ${member.user.tag}` });
-
+      
             await transcriptChannel.send({
               embeds: [embed],
               files: [attachment],
             });
           }
         }
-
-        const ticketOwner = await guild.members.fetch(ticket.userId);
-        const attachment = new AttachmentBuilder(transcriptFilePath);
+      
+        let ticketOwner;
         try {
-          await ticketOwner.send({
-            content: 'Here is the transcript of your closed ticket. Thank you for reaching out!',
-            files: [attachment],
-          });
+          ticketOwner = await guild.members.fetch(ticket.userId);
         } catch (err) {
-          console.warn(`Unable to DM user (${ticket.userId}):`, err.message);
+          console.warn(`Could not fetch ticket owner (${ticket.userId})`, err.message);
+          ticketOwner = null; // Allow processing to continue even if user is not found
         }
-
+      
+        if (ticketOwner) {
+          const attachment = new AttachmentBuilder(transcriptFilePath);
+          try {
+            await ticketOwner.send({
+              content: 'Here is the transcript of your closed ticket. Thank you for reaching out!',
+              files: [attachment],
+            });
+          } catch (err) {
+            console.warn(`Unable to DM user (${ticket.userId}):`, err.message);
+          }
+        }
+      
         ticket.status = 'closed';
         await ticket.save();
-
+      
         if (!channel.permissionsFor(guild.members.me).has(PermissionsBitField.Flags.ManageChannels)) {
           return interaction.editReply({
             content: "I don't have permission to delete this channel.",
           });
         }
-
+      
         await interaction.editReply({
           content: 'The ticket has been closed, and the transcript has been saved.',
         });
         await channel.delete();
-
+      
         unlink(transcriptFilePath, (err) => {
           if (err) console.error('Error deleting transcript file:', err);
         });

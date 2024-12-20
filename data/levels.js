@@ -8,7 +8,7 @@ const levels = [
   { level: "Drama Dumpster Diver", messages: 500, message: "500 messages and counting. You're officially wading knee-deep in irrelevant chatter." },
   { level: "Legendary Oversharer", messages: 750, message: "750 messages? Your life story is now public record. And no one asked for it." },
   { level: "Banter Black Hole", messages: 1000, message: "1,000 messages in. You’ve achieved the rare status of being both everywhere and nowhere at once." },
-  { level: "Supreme Yap Tyrant", messages: 1500, message: "Your yap has reached god-tier levels. Do you even have a real life, or is this it for you?" },
+  { level: "Supreme Yap Tyrant", messages: 1500, message: "1,500 messages! Your yap has reached god-tier levels. Do you even have a real life, or is this it for you?" },
   { level: "Talkative Titan", messages: 2000, message: "2,000 messages! Your keyboard is probably begging for mercy." },
   { level: "Chatter King", messages: 3000, message: "3,000 messages! That's some royal yap you've got there." },
   { level: "Discourse Deity", messages: 5000, message: "5,000 messages! You've ascended into the god-tier chat realm." },
