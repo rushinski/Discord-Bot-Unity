@@ -14,8 +14,9 @@ module.exports = {
           { name: 'Moderation Log (Text Channel)', value: 'moderation-log' },
           { name: 'Ticket Transcripts (Text Channel)', value: 'ticket-transcripts' },
           { name: 'Created Ticket Category (Category)', value: 'created-ticket-category' },
-          { name: 'Leave Log (Text Channel)', value: 'leave-log' },
+          { name: 'Join Leave Log (Text Channel)', value: 'join-leave-log' },
           { name: 'Welcome Channel (Text Channel)', value: 'welcome-channel' },
+          { name: 'Total Member Count (Voice Channel)', value: 'total-members'}
         )
     )
     .addStringOption(option =>
@@ -41,7 +42,7 @@ module.exports = {
     switch (field) {
       case 'moderation-log':
       case 'ticket-transcripts':
-      case 'leave-log':
+      case 'join-leave-log':
       case 'welcome-channel':
         if (channel.type !== ChannelType.GuildText) {
           return interaction.reply({
@@ -54,6 +55,14 @@ module.exports = {
         if (channel.type !== ChannelType.GuildCategory) {
           return interaction.reply({
             content: `The selected field (${field}) requires a **Category**. Please provide a valid Category ID.`,
+            ephemeral: true,
+          });
+        }
+        break;
+      case 'total-members':
+        if (channel.type !== ChannelType.GuildVoice) {
+          return interaction.reply({
+            content: `The selected field (${field}) requires a **Voice Channel**. Please provice a valid Voice Channel ID.`,
             ephemeral: true,
           });
         }
@@ -82,11 +91,14 @@ module.exports = {
       case 'created-ticket-category':
         guildConfig.createdTicketCategory = channelId;
         break;
-      case 'leave-log':
-        guildConfig.leaveLogChannel = channelId;
+      case 'join-leave-log':
+        guildConfig.joinLeaveLogChannel = channelId;
         break;
       case 'welcome-channel':
         guildConfig.welcomeChannel = channelId;
+        break;
+      case 'total-members':
+        guildConfig.memberCountChannel = channelId;
         break;
     }
 

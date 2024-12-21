@@ -5,8 +5,9 @@ const guildConfigSchema = new Schema({
   moderationLogChannel: { type: String, default: null }, // Channel for moderation logs
   ticketTranscriptsChannel: { type: String, default: null }, // Channel for ticket transcripts
   createdTicketCategory: { type: String, default: null }, // Category for created tickets
-  leaveLogChannel: { type: String, default: null }, // Channel for leave logs
+  joinLeaveLogChannel: { type: String, default: null }, // Channel for join leave logs
   welcomeChannel: { type: String, default: null }, // Channel for welcome messages
+  memberCountChannel: { type: String, default: null }, // Total members channel
 });
 
 module.exports = model('GuildConfig', guildConfigSchema);

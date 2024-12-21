@@ -24,21 +24,40 @@ module.exports = {
     const oldContent = oldMessage.content?.trim() || 'No content';
     const newContent = newMessage.content?.trim() || 'No content';
 
-    // Ensure content is within Discord's character limits
+    // Truncate long content to fit Discord's limits
     const MAX_FIELD_LENGTH = 1024;
-    const truncate = (content) => content.length > MAX_FIELD_LENGTH ? content.slice(0, MAX_FIELD_LENGTH - 3) + '...' : content;
+    const truncate = (content) =>
+      content.length > MAX_FIELD_LENGTH ? content.slice(0, MAX_FIELD_LENGTH - 3) + '...' : content;
+
+    // User details
+    const user = oldMessage.author || newMessage.author;
+    const nickname = oldMessage.member?.nickname || 'No nickname';
+    const userId = user.id;
+    const username = user.tag;
+
+    // Message details
+    const oldTimestamp = oldMessage.createdAt.toISOString();
+    const editedTimestamp = newMessage.editedAt?.toISOString() || 'Unknown';
 
     const embed = new EmbedBuilder()
       .setTitle('Message Edited')
       .setColor('Yellow')
+      .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 1024 }))
       .addFields(
-        { name: 'Author', value: `${oldMessage.author?.tag || 'Unknown User'} (<@${oldMessage.author?.id || 'Unknown ID'}>)` },
+        { name: 'Author', value: username, inline: true },
+        { name: 'Nickname', value: nickname, inline: true },
+        { name: 'User ID', value: userId, inline: true },
+        { name: 'Original Message Time (UTC)', value: oldTimestamp, inline: true },
+        { name: 'Edited Time (UTC)', value: editedTimestamp, inline: true },
+        { name: 'Channel', value: `<#${oldMessage.channel?.id || 'Unknown Channel'}>`, inline: false },
         { name: 'Old Message', value: truncate(oldContent), inline: false },
-        { name: 'New Message', value: truncate(newContent), inline: false },
-        { name: 'Channel', value: `<#${oldMessage.channel?.id || 'Unknown Channel'}>`, inline: true }
+        { name: 'New Message', value: truncate(newContent), inline: false }
       )
       .setTimestamp()
-      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+      .setFooter({
+        text: 'Message moderation logs',
+        iconURL: oldMessage.guild.iconURL({ dynamic: true }) || undefined,
+      });
 
     // Send the embed to the log channel
     try {

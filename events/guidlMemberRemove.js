@@ -4,13 +4,26 @@ const MessageLogChannel = require('../schemas/config'); // Import schema for con
 module.exports = {
   name: 'guildMemberRemove',
   async execute(member) {
-    // Get the leave log channel ID from the database
+    // Fetch the configuration for the guild from the database
     const logChannelData = await MessageLogChannel.findOne({ guildId: member.guild.id });
-    if (!logChannelData || !logChannelData.leaveLogChannel) return;
 
-    const leaveLogChannelId = logChannelData.leaveLogChannel;
-    const channel = member.guild.channels.cache.get(leaveLogChannelId);
-    if (!channel) return console.log("Leave log channel not found!");
+    if (!logChannelData) {
+      return console.log(`No configuration found for guild ID: ${member.guild.id}`);
+    }
+
+    // Extract the join leave log and member count channel IDs
+    const joinLeaveLogChannelId = logChannelData.joinLeaveLogChannel;
+    const memberCountChannelId = logChannelData.memberCountChannel;
+
+    if (!joinLeaveLogChannelId) {
+      return console.log(`Join leave log channel ID not configured for guild ID: ${member.guild.id}`);
+    }
+
+    const logChannel = member.guild.channels.cache.get(joinLeaveLogChannelId);
+
+    if (!logChannel) {
+      return console.log(`Join leave log channel with ID ${joinLeaveLogChannelId} not found in cache.`);
+    }
 
     const joinTime = member.joinedAt;
     const leaveTime = new Date();
@@ -43,7 +56,6 @@ module.exports = {
     } catch (error) {
       console.error('Error fetching audit logs:', error);
     }
-    let guild = member.guild;
 
     // Create the embed for the member leaving
     const embed = new EmbedBuilder()
@@ -57,32 +69,35 @@ module.exports = {
         { name: 'Joined At', value: joinTime ? joinTime.toLocaleString() : 'Unknown', inline: true },
         { name: 'Left At', value: leaveTime.toLocaleString(), inline: true },
         { name: 'Time in Server', value: formattedTimeInServer || 'Unknown', inline: true },
-        { name: 'Current Member Count', value: `${guild.memberCount} members`, inline: true }
+        { name: 'Current Member Count', value: `${member.guild.memberCount} members`, inline: true }
       )
-      .setFooter({ text: 'Member left', iconURL: guild.iconURL({ dynamic: true }) || undefined })
+      .setFooter({ text: 'Member left', iconURL: member.guild.iconURL({ dynamic: true }) || undefined })
       .setTimestamp();
 
     // Send the embed to the log channel
     try {
-      await channel.send({ embeds: [embed] });
+      await logChannel.send({ embeds: [embed] });
     } catch (error) {
       console.error('Error sending message to channel:', error);
     }
 
-    // Update the member count channel
-    const memberCountChannelId = '1300291093186744412'; // Replace with your member count channel ID
-    try {
+    // Update the member count channel dynamically from the schema
+    if (memberCountChannelId) {
       const memberCountChannel = member.guild.channels.cache.get(memberCountChannelId);
       if (memberCountChannel) {
-        await memberCountChannel.setName(`👥︱ᴛᴏᴛᴀʟ ᴍᴇᴍʙᴇʀs : ${member.guild.memberCount}`);
-        console.log('Member count updated successfully');
+        try {
+          await memberCountChannel.setName(`👥︱ᴛᴏᴛᴀʟ ᴍᴇᴍʙᴇʀs : ${member.guild.memberCount}`);
+          console.log('Member count updated successfully');
+        } catch (error) {
+          console.error('Failed to update member count:', error);
+        }
       } else {
-        console.log('Member count channel not found');
+        console.log(`Member count channel with ID ${memberCountChannelId} not found in cache.`);
       }
-    } catch (error) {
-      console.error('Failed to update member count:', error);
+    } else {
+      console.log('Member count channel not configured in the database.');
     }
-  }
+  },
 };
 
 // Utility function to format duration into days, hours, minutes, and seconds
