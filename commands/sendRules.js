@@ -10,11 +10,11 @@ module.exports = {
     const verifyEmbed = new EmbedBuilder()
       .setTitle('Server Rules 📜')
       .setDescription(
-        '**The server is pretty chill but obviously there has to be some rules:**\n' +
+        '**Rules in this server will be enforced with a 3 strike system. Three rule breaks and you will be banned.' +
         '1. **Respect others.**\n' +
-        '2. **Promoting other jump groups in our server** will result in a **ban**.\n' +
-        '3. **Hateful racism and homophobia** is not permitted.\n' +
-        '4. No spam!'
+        '2. **Promoting other groups in our server will result in a ban.**\n' +
+        '3. **No hate speach.**\n' +
+        '4. **No spam!**'
       )
       .setColor('Green')
       .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });

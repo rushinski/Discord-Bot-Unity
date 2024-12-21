@@ -84,11 +84,4 @@ module.exports = [
   'fagg ot',
   'faggo t',
   'f a g g o t',
-
-  'chink',
-  'c hink',
-  'ch ink',
-  'chi nk',
-  'chin k',
-  'c h i n k',
 ];
