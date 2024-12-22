@@ -9,7 +9,7 @@ module.exports = {
   async execute(interaction) {
     const ticketEmbed = new EmbedBuilder()
       .setColor('Blue')
-      .setTitle('Ticket Support 🎟️')
+      .setTitle('Ticket Support')
       .setDescription(
         `Please select the type of ticket you wish to create from the dropdown menu below and click **Submit**. Available options include:
         

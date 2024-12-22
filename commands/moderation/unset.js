@@ -16,6 +16,7 @@ module.exports = {
           { name: 'Created Ticket Category (Category)', value: 'created-ticket-category' },
           { name: 'Leave Log (Text Channel)', value: 'leave-log' },
           { name: 'Welcome Channel (Text Channel)', value: 'welcome-channel' },
+          { name: 'Total Member Count (Voice Channel)', value: 'total-members'}
         )
     ),
 
@@ -43,10 +44,13 @@ module.exports = {
         guildConfig.createdTicketCategory = null;
         break;
       case 'leave-log':
-        guildConfig.leaveLogChannel = null;
+        guildConfig.joinLeaveLogChannel = null;
         break;
       case 'welcome-channel':
         guildConfig.welcomeChannel = null;
+        break;
+      case 'total-members':
+        guildConfig.memberCountChannel = null;
         break;
       default:
         return interaction.reply({

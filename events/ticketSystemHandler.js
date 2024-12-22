@@ -112,38 +112,44 @@ module.exports = {
 
       await ticketData.save().catch(console.error);
 
+      const guild = interaction.guild;
+      const user = interaction.user; // The user who triggered the interaction
+      const member = interaction.guild.members.cache.get(user.id); // Retrieve member info from guild
+
       const ticketEmbed = new EmbedBuilder()
-        .setColor('Blue')
-        .setTitle(`${ticketType.charAt(0).toUpperCase() + ticketType.slice(1)} Ticket 🎟️`)
-        .setDescription(
-          `**A new ticket has been opened!**\n\n` +
-          `📝 **Reason:** ${ticketType}\n` +
-          `👤 **Requested By:** <@${interaction.user.id}>\n` +
-          `📢 **Support Role:** ` +
-          (ticketType === 'rss_sellers' ? `<@&${UPPER_TICKET_SUPPORT_ROLE}>` :
-           ticketType === 'application' ? `<@&${UPPER_TICKET_SUPPORT_ROLE}>` : `<@&${GENERAL_SUPPORT_ROLE}>`) +
-          `\n\n💬 **Issue Description:**\n${ticketDescription}`
-        )
-        .setFooter({
-          text: 'Click the button below to close the ticket when done.',
-        });
+      .setColor('Blue')
+      .setTitle(`${ticketType.charAt(0).toUpperCase() + ticketType.slice(1)} Ticket`)
+      .setDescription(
+        `**A new ticket has been opened!**\n\n` +
+        `👤 **User Info:**\n` +
+        `- **Username:** ${user.tag}\n` +
+        `- **Display name:** ${user.displayName}\n` +
+        `- **Nickname:** ${member.nickname || 'No nickname'}\n\n` +
+        `📝 **Issue Details:**\n` +
+        `- **Reason:** ${ticketType}\n` +
+        `- **Description:** ${ticketDescription}`
+      )
+      .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 1024 }))
+      .setFooter({ text: 'Support Team will assist you shortly.', iconURL: guild.iconURL({ dynamic: true }) })
+      .setTimestamp();
+    
+
+      const closeButton = new ButtonBuilder()
+        .setCustomId('close-ticket')
+        .setLabel('Close Ticket')
+        .setStyle(ButtonStyle.Danger);  
 
       const pingSupportButton = new ButtonBuilder()
         .setCustomId('pingSupport')
         .setLabel('Ping Support')
         .setStyle(ButtonStyle.Primary);
 
-      const closeButton = new ButtonBuilder()
-        .setCustomId('closeTicket')
-        .setLabel('Close Ticket')
-        .setStyle(ButtonStyle.Danger);
-
       const actionRow = new ActionRowBuilder().addComponents(pingSupportButton, closeButton);
 
       const message = await ticketChannel.send({
-        content: `Ticket created! Support team has been notified.\n${
+        content: `${
   ticketType === 'rss_sellers' ? `<@&${UPPER_TICKET_SUPPORT_ROLE}>` :
-  ticketType === 'application' ? `<@&${UPPER_TICKET_SUPPORT_ROLE}>` : `<@&${GENERAL_SUPPORT_ROLE}>`}`,
+  ticketType === 'application' ? `<@&${UPPER_TICKET_SUPPORT_ROLE}>` : `<@&${GENERAL_SUPPORT_ROLE}>`} | <@${user.id}>`,
         embeds: [ticketEmbed],
         components: [actionRow],
       });
@@ -182,102 +188,6 @@ module.exports = {
 
       await interaction.reply({ content: 'Support team has been pinged!', ephemeral: true });
       await interaction.channel.send({ content: `<@&${supportRole.id}>` });
-    }
-
-    if (interaction.isButton() && interaction.customId === 'closeTicket') {
-      if (interaction.channel && interaction.channel.name.startsWith('ticket-')) {
-        const channel = interaction.channel;
-    
-        await interaction.reply({ content: 'Closing ticket and saving transcript...', ephemeral: true });
-    
-        let guildConfig;
-        try {
-          guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
-          if (!guildConfig) {
-            return interaction.followUp({
-              content: 'Guild configuration missing. Please configure the ticket system.',
-              ephemeral: true,
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching guild config during closeTicket:', error);
-          return interaction.followUp({
-            content: 'Error accessing guild configuration during ticket closure.',
-            ephemeral: true,
-          });
-        }
-    
-        const messages = [];
-        let lastMessageId = null;
-    
-        let fetchedMessages;
-        do {
-          fetchedMessages = await channel.messages.fetch({ limit: 100, before: lastMessageId });
-          if (fetchedMessages.size === 0) break;
-    
-          fetchedMessages.forEach((msg) => {
-            messages.push({
-              author: msg.author.tag,
-              content: msg.content || '[Embed or File]',
-              timestamp: msg.createdAt,
-            });
-          });
-    
-          lastMessageId = fetchedMessages.last()?.id;
-    
-        } while (fetchedMessages.size === 100);
-    
-        const ticketData = await Ticket.findOne({ channelId: channel.id });
-        if (!ticketData) {
-          return interaction.followUp({
-            content: 'No ticket data found for this channel. Transcript may be incomplete.',
-            ephemeral: true,
-          });
-        }
-    
-        // Save transcript
-        const transcript = new TicketTranscript({
-          userId: ticketData.userId,
-          username: interaction.guild.members.cache.get(ticketData.userId)?.user.tag || 'Unknown',
-          ticketType: ticketData.ticketType,
-          description: ticketData.description,
-          messages,
-        });
-    
-        try {
-          await transcript.save();
-        } catch (error) {
-          console.error('Error saving transcript:', error);
-        }
-    
-        const transcriptChannel = interaction.guild.channels.cache.get(guildConfig.ticketTranscriptsChannel);
-        if (!transcriptChannel) {
-          return interaction.followUp({
-            content: 'Transcript channel missing. Please ensure it is properly configured with `/set` command.',
-            ephemeral: true,
-          });
-        }
-    
-        const transcriptEmbed = new EmbedBuilder()
-          .setColor('DarkBlue')
-          .setTitle(`Ticket Transcript: ${channel.name}`)
-          .setDescription(`**Ticket Type:** ${ticketData.ticketType}\n**User:** <@${ticketData.userId}>\n`)
-          .setFooter({ text: 'Transcript successfully saved.' });
-    
-        await transcriptChannel.send({ embeds: [transcriptEmbed] });
-    
-        // Update ticket status in MongoDB
-        await Ticket.findOneAndUpdate(
-          { channelId: channel.id },
-          { status: 'closed' }, // Mark the ticket as closed
-          { new: true }
-        );
-    
-        // Optionally delete the ticket document from MongoDB
-        // await Ticket.deleteOne({ channelId: channel.id });
-    
-        await channel.delete();
-      }
     }
   }
 }    

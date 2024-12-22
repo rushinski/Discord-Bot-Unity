@@ -110,18 +110,18 @@ async function createVerificationTicket(member, context, user) {
       .setLabel('Verify User')
       .setStyle(ButtonStyle.Success);
 
-    const buttonRow = new ActionRowBuilder().addComponents(closeButton, pingButton, verifyButton);
+    const buttonRow = new ActionRowBuilder().addComponents(pingButton, verifyButton, closeButton);
 
     // Send embed in the new ticket channel
     const accountCreationDate = `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`; // Relative timestamp
 
     const ticketEmbed = new EmbedBuilder()
       .setColor('Blue')
-      .setTitle('Verification Ticket 🎟️')
+      .setTitle('Verification Ticket')
       .setDescription(
-        `**A verification ticket has been created!**\n\n👤 **User Info:**\n- **Username:** ${user.tag}\n- **ID:** ${user.id}\n- **Nickname:** ${
+        `**A verification ticket has been created!**\n\n👤 **User Info:**\n- **Username:** <@${user.tag}>\n- **Display name:** ${user.displayName}\n- **Nickname:** ${
           member.nickname || 'No nickname'
-        }\n- **Account Created:** ${accountCreationDate}\n\n🔔 **Upper Ticket Support Role has been notified.**`
+        }\n- **Account Created:** ${accountCreationDate}\n\n🔔 **Verification Support Role has been notified.**`
       )
       .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 1024 }))
       .setFooter({ text: 'Support Team will assist you shortly.', iconURL: guild.iconURL({ dynamic: true }) })
