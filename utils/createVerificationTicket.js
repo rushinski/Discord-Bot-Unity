@@ -119,7 +119,7 @@ async function createVerificationTicket(member, context, user) {
       .setColor('Blue')
       .setTitle('Verification Ticket')
       .setDescription(
-        `**A verification ticket has been created!**\n\n👤 **User Info:**\n- **Username:** <@${user.tag}>\n- **Display name:** ${user.displayName}\n- **Nickname:** ${
+        `**A verification ticket has been created!**\n\n👤 **User Info:**\n- **Username:** ${user.tag}\n- **Display name:** ${user.displayName}\n- **Nickname:** ${
           member.nickname || 'No nickname'
         }\n- **Account Created:** ${accountCreationDate}\n\n🔔 **Verification Support Role has been notified.**`
       )
