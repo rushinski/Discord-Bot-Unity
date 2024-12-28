@@ -19,7 +19,7 @@ module.exports = {
 
     const { customId, channel, guild, member } = interaction;
 
-    const UPPER_SUPPORT_ROLE_ID = '1319732727355805737'; // Replace with your support role ID
+    const UPPER_SUPPORT_ROLE_ID = '1319567279511572491'; // Replace with your support role ID
     const VERIFIED_ROLE_ID = '1245564960269144205'; // Replace with your verified role ID
     const VIP_ROLE_ID = '1319732727355805737';
     const PING_DELAY = 15 * 60 * 1000; // 15 minutes in milliseconds

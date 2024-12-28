@@ -10,7 +10,7 @@ module.exports = {
 
         // Set bot activity
         client.user.setActivity({
-            name: 'Listening to Commands!',
+            name: 'Listening to Commands...',
             type: ActivityType.Custom,
         });
 
