@@ -20,8 +20,7 @@ module.exports = {
     const { customId, channel, guild, member } = interaction;
 
     const UPPER_SUPPORT_ROLE_ID = '1319567279511572491'; // Replace with your support role ID
-    const VERIFIED_ROLE_ID = '1245564960269144205'; // Replace with your verified role ID
-    const VIP_ROLE_ID = '1319732727355805737';
+    const VIP_ROLE_ID = '1245564960269144205';
     const PING_DELAY = 15 * 60 * 1000; // 15 minutes in milliseconds
     let ticket;
 
@@ -69,10 +68,9 @@ module.exports = {
           });
         }
 
-        await ticketOwner.roles.add(VERIFIED_ROLE_ID);
         await ticketOwner.roles.add(VIP_ROLE_ID);
         await interaction.reply({
-          content: `${ticketOwner.user.tag} has been verified and given the verified role.`,
+          content: `${ticketOwner.user.tag} has been verified and given the VIP role.`,
           ephemeral: true,
         });
       }

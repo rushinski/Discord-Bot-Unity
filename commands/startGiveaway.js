@@ -1,80 +1,99 @@
-// Import required modules
-const { EmbedBuilder } = require('discord.js'); // Use EmbedBuilder instead of MessageEmbed
+const { EmbedBuilder } = require('discord.js');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const ms = require('ms'); // Ensure you have the 'ms' package installed
+const Giveaway = require('../schemas/giveaway'); // Import your MongoDB giveaway schema
 
-// Command to start a giveaway
 module.exports = {
-    admin: true,
-    data: new SlashCommandBuilder()
-        .setName('start-giveaway')
-        .setDescription('Start a giveaway!')
-        .addStringOption(option =>
-          option.setName('title')
-              .setDescription('title of giveaway')
-              .setRequired(true))
-        .addStringOption(option =>
-            option.setName('duration')
-                .setDescription('Duration of the giveaway (e.g., 1s, 1m, 2h, 3d)')
-                .setRequired(true))
-        .addStringOption(option =>
-            option.setName('prize')
-                .setDescription('The prize for the giveaway')
-                .setRequired(true))
-        .addIntegerOption(option =>
-            option.setName('winners')
-                .setDescription('Number of winners')
-                .setRequired(true)),
-    
-    async execute(interaction) {
-        const title = interaction.options.getString('title');
-        const duration = interaction.options.getString('duration');
-        const prize = interaction.options.getString('prize');
-        const winnersCount = interaction.options.getInteger('winners');
+  admin: true,
+  data: new SlashCommandBuilder()
+    .setName('start-giveaway')
+    .setDescription('Start a giveaway!')
+    .addStringOption(option =>
+      option.setName('title')
+        .setDescription('Title of the giveaway')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('duration')
+        .setDescription('Duration of the giveaway (e.g., 1s, 1m, 2h, 3d)')
+        .setRequired(true))
+    .addStringOption(option =>
+      option.setName('prize')
+        .setDescription('The prize for the giveaway')
+        .setRequired(true))
+    .addIntegerOption(option =>
+      option.setName('winners')
+        .setDescription('Number of winners')
+        .setRequired(true)),
 
-        // Check if the duration is valid
-        if (!duration.match(/^\d+[smhd]$/)) {
-            return interaction.reply({ content: 'Invalid duration format! Use s (seconds), m (minutes), h (hours), or d (days).', ephemeral: true });
-        }
+  async execute(interaction) {
+    const title = interaction.options.getString('title');
+    const duration = interaction.options.getString('duration');
+    const prize = interaction.options.getString('prize');
+    const winnersCount = interaction.options.getInteger('winners');
 
-        const giveawayChannel = interaction.channel;
+    // Validate duration
+    if (!duration.match(/^\d+[smhd]$/)) {
+      return interaction.reply({
+        content: 'Invalid duration format! Use s (seconds), m (minutes), h (hours), or d (days).',
+        ephemeral: true
+      });
+    }
 
-        // Calculate end time
-        const endTime = Date.now() + ms(duration);
-        const endTimeUTC = new Date(endTime).toUTCString(); // Format the end time in UTC
+    const giveawayChannel = interaction.channel;
+    const endTime = Date.now() + ms(duration);
+    const endTimeUTC = new Date(endTime).toUTCString();
 
-        // Create a giveaway embed
-        const giveawayEmbed = new EmbedBuilder() // Use EmbedBuilder instead of MessageEmbed
-            .setTitle(`${title} 🎉`)
-            .setDescription(`Prize: **${prize}**\nNumber of winners: **${winnersCount}**\nEnds at: **${endTimeUTC}** (UTC)`)
-            .setColor('Green')
-            .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+    const giveawayEmbed = new EmbedBuilder()
+      .setTitle(`${title} 🎉`)
+      .setDescription(`Prize: **${prize}**\nNumber of winners: **${winnersCount}**\nEnds at: **${endTimeUTC}** (UTC)`)
+      .setColor('Green')
+      .setFooter({
+        text: 'Good luck to all participants!'
+      })
+      .setTimestamp();
 
-        // Send the giveaway message
-        const giveawayMessage = await giveawayChannel.send({ embeds: [giveawayEmbed] });
+    const giveawayMessage = await giveawayChannel.send({ embeds: [giveawayEmbed] });
+    await giveawayMessage.react('🎉');
 
-        // React to the message with 🎉
-        await giveawayMessage.react('🎉');
+    // Save the giveaway data to MongoDB
+    const giveawayData = new Giveaway({
+      title,
+      prize,
+      winnersCount,
+      endDate: endTime,
+      channelId: giveawayChannel.id,
+      messageId: giveawayMessage.id
+    });
+    await giveawayData.save();
 
-        // Reply to the interaction with a confirmation message
-        await interaction.reply({ content: 'The giveaway has been started!', ephemeral: true });
+    await interaction.reply({
+      content: 'The giveaway has been started!',
+      ephemeral: true
+    });
 
-        // Set a timeout to end the giveaway
-        setTimeout(async () => {
-            const users = await giveawayMessage.reactions.cache.get('🎉').users.fetch();
-            users.delete(giveawayMessage.author.id); // Remove the bot from the users
+    // End giveaway after the duration
+    setTimeout(async () => {
+      const updatedData = await Giveaway.findOne({ messageId: giveawayMessage.id });
+      if (!updatedData) return; // Giveaway was deleted or not found
 
-            const winners = users.random(winnersCount);
-            const winnersMention = winners.map(winner => `<@${winner.id}>`).join(', ') || 'No winners';
+      const users = await giveawayMessage.reactions.cache.get('🎉').users.fetch();
+      users.delete(giveawayMessage.author.id); // Exclude bot from winners
+      const winners = users.random(winnersCount);
+      const winnersMention = winners.map(winner => `<@${winner.id}>`).join(', ') || 'No winners';
 
-            // Announce the winners
-            const endEmbed = new EmbedBuilder() // Use EmbedBuilder instead of MessageEmbed
-                .setTitle(`${title} Ended!`)
-                .setDescription(`The giveaway for **${prize}** has ended!\nWinners: ${winnersMention}`)
-                .setColor('Red')
-                .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+      const endEmbed = new EmbedBuilder()
+        .setTitle(`${title} Ended!`)
+        .setDescription(`The giveaway for **${prize}** has ended!\nWinners: ${winnersMention}`)
+        .setColor('Red')
+        .setFooter({
+          text: 'Thanks for participating!'
+        })
+        .setTimestamp();
 
-            giveawayChannel.send({ embeds: [endEmbed] });
-        }, ms(duration)); // Use the 'ms' package to convert the duration to milliseconds
-    },
+      giveawayChannel.send({ embeds: [endEmbed] });
+
+      // Remove the giveaway data from MongoDB
+      await Giveaway.deleteOne({ messageId: giveawayMessage.id });
+    }, ms(duration));
+  }
 };
