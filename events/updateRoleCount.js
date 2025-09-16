@@ -3,7 +3,7 @@ module.exports = {
   once: true,
   async execute(client) {
     // Replace with your specific role ID and channel ID
-    const roleId = '1319732727355805737'; // Role to track
+    const roleId = '1245564960269144205'; // Role to track
     const channelId = '1308243642938425366'; // Channel to update
 
     const updateRoleCount = async () => {
