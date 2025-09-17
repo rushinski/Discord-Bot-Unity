@@ -1,2 +1,25 @@
+# Node
 node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Env & Config
+.env
+.env.local
+*.env
 config.json
+
+# Logs
+*.log
+logs/
+
+# Deployment Artifacts
+discloud/backup/
+discloud/import/
+
+# System / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
