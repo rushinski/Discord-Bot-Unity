@@ -16,12 +16,27 @@ Originally designed for a **large-scale gaming community (Kingdom 3743, ~900 mem
 
 ## ✨ Features
 
-- ⚖️ **Moderation Tools** → `/send-rules` command (admin-only), rule embeds, and structured enforcement.  
-- 🎟️ **Ticketing System** → dropdown ticket creation, role-based verification, support pings with cooldown, and closure transcripts (saved to GitHub Gist).  
-- 🏆 **Leveling & Leaderboards** → gamified chat progression, user persistence in MongoDB, `/leaderboard` command to showcase top members.  
-- 🔔 **Event Handlers** → modular event listeners for `messageCreate`, `guildMemberAdd`, `messageDelete`, and more.  
-- 🛠️ **Dynamic Loaders** → auto-registration of commands, events, and UI components.  
+### 🎭 Community Engagement
+- 🏆 **Leveling & Leaderboards** → gamified chat progression, user persistence in MongoDB, `/leaderboard` command to showcase top members.
+- 🎟️ **Ticketing System** → dropdown ticket creation, role-based verification, support pings with cooldown, and closure transcripts (saved to GitHub Gist).
+- 📊 **Role Selection & Counts** → `/sendRolesSelect` for self-assignable roles, with live updates tracked by `updateRoleCount`.
+
+### ⚖️ Moderation & Security
+- 🚫 **Rule Enforcement** → `/send-rules` command, banned words filter, structured enforcement.
+- 🔨 **Expanded Moderation Tools** → `/idBan`, `/idUnban`, `/strike`, `/set`, `/unset`, `/verifyUser` for complete admin control.
+- 📝 **Infractions Tracking** → MongoDB persistence for strikes, bans, and moderation logs.
+
+### 🎉 Engagement Utilities
+- 🎁 **Giveaways** → `/startGiveaway` with persistent schema for entrants and winners.
+- ✅ **Verification System** → `/sendVerification`, verification tickets, reaction-based verification, persistent storage of verification states.
+- ⏰ **Utilities** → `/getUtc`, `/say`, scheduled UTC-ready status via `readyUTC`.
+
+### 🛠️ Infrastructure & Extensibility
+- 🛠️ **Dynamic Loaders** → auto-registration of commands, events, and UI components.
 - 🔐 **Access Control** → flag-driven restrictions (`admin`, `owner`), cooldowns, and Discord-native permission checks.
+- ☁️ **Hosting/Deployment** → optimized for Discloud with `discloud.config`, backups, and import snapshots.
+- 📂 **Persistence** → MongoDB + Mongoose models for users, tickets, giveaways, configs, transcripts, infractions.
+- 🔗 **External Integrations** → GitHub Gist for transcript archiving.
 
 ---
 
@@ -46,10 +61,12 @@ Originally designed for a **large-scale gaming community (Kingdom 3743, ~900 mem
 - Modular event-driven architecture
 - Leveling + gamification engine
 - Ticket system with transcripts + GitHub Gist integration
+- Expanded moderation & verification workflows
+- Giveaway engine with persistent storage
 
 **Infrastructure**
-- Hosting: Upgraded paid VPS (for scale)  
-- Config: JSON-based configs + `.env` secrets  
+- Hosting: Paid VPS + Discloud deployment  
+- Config: `config.json` (tokens, Mongo URL, bot ID) + `.env` secrets  
 - Security: Discord permission model + flag-based command access
 
 ---
@@ -59,18 +76,25 @@ Originally designed for a **large-scale gaming community (Kingdom 3743, ~900 mem
 ```text
 bot/
 ├── commands/              # Modular command files
-│   ├── levels/            # Leveling commands (leaderboard, yap-check)
-│   ├── moderation/        # Moderation commands (send-rules, setup)
-│   └── misc/              # Miscellaneous commands
+│   ├── levels/            # Leveling commands (leaderboard, add/remove/reset messages)
+│   ├── moderation/        # Moderation commands (ban/unban, strikes, verifyUser, set/unset)
+│   ├── misc/              # Miscellaneous commands (getUtc, say)
+│   ├── sendRolesSelect.js # Role selection embed
+│   ├── sendRules.js       # Rules enforcement
+│   ├── sendTicketSetup.js # Ticket setup embed
+│   ├── sendVerification.js# Verification setup
+│   └── startGiveaway.js   # Giveaway system
 │
-├── events/                # Event handlers (messageCreate, tickets, guild events)
-├── utils/                 # Infrastructure loaders (RegisterCommands, ComponentLoader)
-├── schemas/               # MongoDB models (User, Ticket, Config, Transcripts)
+├── events/                # Event handlers (messages, moderation, tickets, reactions, guild events)
+├── utils/                 # Infrastructure loaders & helpers (RegisterCommands, EventLoader, ComponentLoader)
+├── schemas/               # MongoDB models (User, Ticket, Infractions, Giveaways, Config, Transcripts)
 ├── data/                  # Static data (levels, banned words)
+├── discloud/              # Hosting configs, backups, import snapshots
 │
 ├── index.js               # Entrypoint, client + loaders
-├── config.json            # Bot configuration
-└── package.json           # Dependencies
+├── config.json            # Bot config (tokens, Mongo URL, bot ID)
+├── package.json           # Dependencies
+└── package-lock.json      # Lockfile
 ```
 
 ---
@@ -82,4 +106,3 @@ bot/
 - [SECURITY.md](./SECURITY.md) → Role-based restrictions, cooldown enforcement, data handling
 
 📌 Portfolio Case Study: This bot demonstrates **scalable engineering for real-world community management**, bridging moderation, engagement, and structured support into one unified system.
-
