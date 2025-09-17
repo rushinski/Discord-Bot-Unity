@@ -99,10 +99,39 @@ bot/
 
 ---
 
+## 🧪 Reliability & Testing
+
+### Testing & QA
+- All testing conducted in a **private Discord server** prior to deployment.
+- Error recovery workflow:
+  - Monitor **Discloud logs** via mobile.
+  - Restart bot quickly if errors occur.
+  - Debug and patch fixes directly in **VS Code**.
+- Demonstrates hands-on QA and monitoring discipline.
+
+### Error Handling
+- `try/catch` used across all commands/events.
+- **Central handling** in `index.js`.
+- **Utils-level handling** (all except `levelUtils.js`).
+- `EventLoader.js` demonstrates robust recovery for failed module loads.
+
+---
+
 ## 📖 Additional Documentation
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) → System design and lifecycle flow  
 - [INTEGRATIONS.md](./INTEGRATIONS.md) → Discord API, MongoDB, GitHub Gist integrations  
 - [SECURITY.md](./SECURITY.md) → Role-based restrictions, cooldown enforcement, data handling
+
+---
+
+## 🔮 Future Work
+
+### Scaling & Extensibility
+- Plans to make commands more **dynamic** (e.g., `/send-rules` configurable instead of hard-coded).
+- Expand non-hardcoded **channel IDs** → fully config-driven across features.
+- Transition away from **GitHub Gist** to a more scalable transcript storage method (still under review).
+
+---
 
 📌 Portfolio Case Study: This bot demonstrates **scalable engineering for real-world community management**, bridging moderation, engagement, and structured support into one unified system.

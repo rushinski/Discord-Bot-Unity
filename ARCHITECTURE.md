@@ -151,3 +151,12 @@ security	Discord permission model + flags	Role-based access control, cooldowns, 
 - **Production-proven** → scaled to 900+ members, running in 8 servers
 - **Deployment-ready** → Discloud integration, VPS hosting, backups
 - **Extensible** → modular structure for commands, events, and components
+
+---
+
+## 🔮 Future Work
+
+### Scaling & Extensibility
+- Make commands more **dynamic** (e.g., `/send-rules` configurable instead of hard-coded).
+- Expand non-hardcoded **channel IDs** → fully config-driven across all features.
+- Transition away from **GitHub Gist** to a more scalable transcript storage method (still under evaluation).
