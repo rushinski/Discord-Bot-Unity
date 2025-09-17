@@ -1,103 +1,98 @@
-# Unified Discord Bot - Integrations
+# Unified Discord Bot - Integrations Overview
 
 ## 🎯 Purpose
 
-This document details the **external integrations** that power the Unified Discord Bot. Each integration connects the bot’s modular system with third-party services or APIs, enabling persistence, deployment, and extended functionality.
+The Unified Discord Bot integrates with several **third-party services** to enable its modular community management features.  
+These integrations power **commands, persistence, transcripts, and deployment workflows**.
 
 ---
 
-## 🤖 Discord API
+## 🔑 Discord API (Core Platform)
 
-### Overview
-- Built on **[discord.js v14](https://discord.js.org/)**, providing an abstraction over the Discord REST and WebSocket APIs.
-- Uses **Gateway Intents** for events: `Guilds`, `GuildMembers`, `GuildPresences`, `MessageContent`, `Reactions`.
-
-### Features Enabled
-- Slash Commands (`/leaderboard`, `/idBan`, `/startGiveaway`, etc.)
-- Interaction Components (buttons, dropdowns, modals)
-- Event-driven architecture (messageCreate, guildMemberAdd, ticketSystemHandler)
-- Role & permission enforcement via Discord’s built-in security model
-
-### Security
-- Commands are gated via Discord role/permission checks and bot-side `admin`/`owner` flags.
-- Sensitive identifiers (bot token, application ID) stored in `config.json` / `.env`.
-
----
-
-## 🗄️ MongoDB
-
-### Overview
-- Provides persistence via **Mongoose ODM**.
-- Stores all critical bot state across sessions.
-
-### Schemas
-- `User` → XP, levels, notifications
-- `Infractions` → strikes, warnings, bans
-- `Ticket` → open tickets, user, guild, description
-- `TicketTranscript` → closed tickets, archived metadata
-- `Giveaway` → prize, entrants, winners
-- `Config` → per-guild configurations
-- `RoleReactionMessage` → reaction-role mappings
-
-### Security
-- Connection string (`MONGO_URL`) stored in `config.json` / `.env`.
-- Models enforce schema validation for reliable persistence.
+- **Purpose:** Power all bot interactions (commands, events, role handling)
+- **Integration:**
+  - Library: `discord.js v14`
+  - Gateway intents: `Guilds`, `GuildMembers`, `GuildPresences`, `MessageContent`, `Reactions`
+  - Handlers: slash commands, buttons, dropdowns, modals, events
+- **Features:**
+  - Slash Commands (`/leaderboard`, `/idBan`, `/startGiveaway`)
+  - Role/permission enforcement via Discord’s security model
+  - Event-driven lifecycle (messages, reactions, tickets, verification)
+- **Risks:**
+  - Bot token exposure = total compromise (must be secured in `config.json` / `.env`)
+  - Rate limits must be respected to avoid bans
 
 ---
 
-## 📂 GitHub Gist
+## 🔑 MongoDB (Database)
 
-### Overview
-- Integrated for **ticket transcript storage**.
-- Transcripts uploaded after closure for audit and archival.
-
-### Workflow
-1. User creates a ticket via dropdown.
-2. Support team interacts, conversation is stored.
-3. On closure, transcript generated and uploaded via `utils/githubGistUtils.js`.
-4. Bot returns Gist link in Discord for moderators.
-
-### Benefits
-- Offloads long transcripts from Discord.
-- Provides permanent, shareable records.
-
----
-
-## ☁️ Discloud Hosting
-
-### Overview
-- **Discloud** used as a **deployment platform** in addition to VPS hosting.
-- Provides backups, imports, and fast redeploys.
-
-### Components
-- `discloud.config` → defines deployment parameters.
-- `/discloud/import/*` → deployment snapshots (commands, events, utils, schemas).
-- `/discloud/backup/` → versioned bot backups.
-
-### Workflow
-1. Code changes pushed to GitHub.
-2. Discloud pulls and deploys with predefined config.
-3. Snapshots allow rollback or environment replication.
+- **Purpose:** Provide persistence across all features
+- **Integration:**
+  - ODM: Mongoose
+  - Connection string (`MONGO_URL`) from `config.json` / `.env`
+- **Stored Data:**
+  - Users: XP, levels, notification settings
+  - Infractions: strikes, warnings, bans
+  - Tickets: active tickets, status, metadata
+  - Ticket Transcripts: archived transcripts
+  - Giveaways: prize, entrants, winners
+  - Config: per-guild rules, ticket categories
+  - RoleReactionMessages: reaction-role mappings
+- **Risks:**
+  - Mongo URL exposure = data breach
+  - Improper schema validation could corrupt persistence
 
 ---
 
-## 🔐 Security & Secrets
+## 🔑 GitHub Gist (Transcript Archiving)
 
-- **Bot Token**: stored in `config.json` / `.env`, required for Discord API auth.
-- **MongoDB URL**: stored in `config.json` / `.env`, connects persistence layer.
-- **Bot ID/Application ID**: stored in `config.json`, used for command registration.
-
-**Best Practices**
-- Never commit real tokens to version control.
-- Use environment variables or secret managers for production.
-- Apply least-privilege roles in Discord to minimize attack surface.
+- **Purpose:** Store ticket transcripts externally for auditability
+- **Integration:**
+  - Utility: `utils/githubGistUtils.js`
+  - API requests on ticket closure
+- **Features:**
+  - Permanent, shareable transcript URLs
+  - Keeps Discord channels uncluttered
+- **Risks:**
+  - Public Gists may expose sensitive conversations
+  - Should prefer **secret Gists** for private servers
 
 ---
 
-## 🌟 Integration Strengths
+## 🔑 Discloud Hosting (Deployment)
 
-- **Discord API** → modular event-driven commands, strong security model
-- **MongoDB** → durable storage for leveling, moderation, tickets, giveaways
-- **GitHub Gist** → scalable transcript archiving
-- **Discloud Hosting** → deployment portability, rollback safety, backups
-- **Security Alignment** → secrets management and role-based access enforced
+- **Purpose:** Simplify hosting and redeployment
+- **Integration:**
+  - Config: `discloud.config`
+  - Snapshots: `/discloud/import/*`
+  - Backups: `/discloud/backup/`
+- **Features:**
+  - Rapid deployment from GitHub
+  - Rollback via imports/backups
+  - Scales alongside VPS hosting for reliability
+- **Risks:**
+  - Config leaks could allow attackers to hijack deployments
+  - Vendor lock-in for deployment workflows
+
+---
+
+## 📋 Integration Data Flow
+
+```mermaid
+flowchart TD
+
+User -->|Commands & Events| DiscordAPI
+DiscordAPI --> MongoDB
+DiscordAPI --> GitHubGist
+GitHubRepo --> Discloud
+```
+
+---
+
+## ⚡ Integration Strengths
+
+- **Discord API** → native commands, events, role/permission security
+- **MongoDB** → persistent storage for users, infractions, tickets, giveaways
+- **GitHub Gist** → scalable ticket transcript archiving
+- **Discloud Hosting** → deployment portability, backups, rollback safety
+- **Security Alignment** → secrets stored in `config.json` / `.env`, role-based access enforced
