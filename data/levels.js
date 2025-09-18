@@ -1,19 +1,33 @@
+/**
+ * Level Definitions
+ * ----------------------------------------
+ * Defines the progression system for users based
+ * on total message counts. Each level has:
+ * - `level`: a professional, motivational name
+ * - `messages`: the message threshold to unlock it
+ * - `message`: a positive notification shown on level-up
+ *
+ * Notes:
+ * - Starts with a default level at 0 messages.
+ * - Designed for clarity and recruiter-ready presentation.
+ */
+
 const levels = [
-  { level: "Lurking Loser", messages: 10, message: "Congrats, you're no longer just breathing in the corner. Maybe try contributing something worthwhile next?" },
-  { level: "Wannabe Chatter", messages: 25, message: "Oh, look! Someone's trying to be social. Too bad no one noticed yet." },
-  { level: "Keyboard Warrior Intern", messages: 50, message: "You're getting the hang of typing, but let's face it, your words are still meaningless." },
-  { level: "Blabbering Buffoon", messages: 100, message: "You’ve hit 100 messages! Too bad most of them are probably nonsense." },
-  { level: "Rambling Royal Pain", messages: 200, message: "Wow, 200 messages. Does anyone actually read what you're typing?" },
-  { level: "Verbose Attention Seeker", messages: 350, message: "You sure love the sound of your own voice—or, well, your typing. Seek help." },
-  { level: "Drama Dumpster Diver", messages: 500, message: "500 messages and counting. You're officially wading knee-deep in irrelevant chatter." },
-  { level: "Legendary Oversharer", messages: 750, message: "750 messages? Your life story is now public record. And no one asked for it." },
-  { level: "Banter Black Hole", messages: 1000, message: "1,000 messages in. You’ve achieved the rare status of being both everywhere and nowhere at once." },
-  { level: "Supreme Yap Tyrant", messages: 1500, message: "1,500 messages! Your yap has reached god-tier levels. Do you even have a real life, or is this it for you?" },
-  { level: "Talkative Titan", messages: 2000, message: "2,000 messages! Your keyboard is probably begging for mercy." },
-  { level: "Chatter King", messages: 3000, message: "3,000 messages! That's some royal yap you've got there." },
-  { level: "Discourse Deity", messages: 5000, message: "5,000 messages! You've ascended into the god-tier chat realm." },
-  { level: "Legendary Yap Overlord", messages: 10000, message: "10,000 messages! This is your kingdom now. All hail the yap overlord!" },
+  { level: "Newcomer", messages: 0, message: "Welcome! Your journey begins here. Keep engaging to unlock your next milestone." },
+  { level: "Active Participant", messages: 10, message: "Nice start! You're beginning to contribute to the conversation." },
+  { level: "Contributor", messages: 25, message: "Great work! You're showing consistent engagement." },
+  { level: "Engaged Member", messages: 50, message: "You've hit 50 messages! Your presence is starting to stand out." },
+  { level: "Dedicated Member", messages: 100, message: "100 messages! You're a reliable part of the community." },
+  { level: "Community Advocate", messages: 200, message: "200 messages! You're building real momentum in the conversation." },
+  { level: "Collaborator", messages: 350, message: "350 messages! You're actively helping shape discussions." },
+  { level: "Team Player", messages: 500, message: "500 messages! You're a recognized contributor in this space." },
+  { level: "Leader-in-Training", messages: 750, message: "750 messages! You're stepping into a leadership role." },
+  { level: "Community Leader", messages: 1000, message: "1,000 messages! Your impact is widely recognized." },
+  { level: "Mentor", messages: 1500, message: "1,500 messages! You're setting an example for others." },
+  { level: "Trusted Voice", messages: 2000, message: "2,000 messages! Your contributions carry weight." },
+  { level: "Influencer", messages: 3000, message: "3,000 messages! Your activity drives conversations forward." },
+  { level: "Visionary", messages: 5000, message: "5,000 messages! You're shaping the culture of this community." },
+  { level: "Pioneer", messages: 10000, message: "10,000 messages! You've reached the peak of engagement. Outstanding commitment!" },
 ];
 
 module.exports = levels;
-

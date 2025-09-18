@@ -7,7 +7,7 @@ module.exports = {
 		.setDescription('Say something!'),
 	async execute(interaction, client) {
 		const modal = new ModalBuilder()
-		 .setTitle('Say something!')
+		.setTitle('Say something!')
 		.setCustomId('say')
 
 		const input = new TextInputBuilder()

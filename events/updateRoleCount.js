@@ -1,5 +1,5 @@
 module.exports = {
-  name: 'ready',
+  name: 'clientReady',
   once: true,
   async execute(client) {
     // Replace with your specific role ID and channel ID

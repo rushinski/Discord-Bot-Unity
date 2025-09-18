@@ -5,7 +5,7 @@ const Giveaway = require('../schemas/giveaway');
 const config = require('../config.json');
 
 module.exports = {
-  name: 'ready',
+  name: 'clientReady',
   once: true,
   async execute(client) {
     // Set bot activity

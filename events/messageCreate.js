@@ -1,42 +1,74 @@
-const { EmbedBuilder } = require('discord.js');
+/**
+ * Event: messageCreate
+ * ----------------------------------------
+ * Triggered whenever a user sends a message.
+ * - Increments the user's total message count.
+ * - Automatically recalculates and assigns level
+ *   based on configured thresholds in data/levels.js.
+ * - Sends a private DM if the user has leveled up
+ *   (or down) and notifications are enabled.
+ * - Optionally logs level changes to a configured
+ *   channel if set via /set level-up-log.
+ */
+
 const User = require('../schemas/userSchema');
-const levels = require('../data/levels'); // Assuming this contains your level data
+const GuildConfig = require('../schemas/config');
+const levels = require('../data/levels');
+const { recalculateLevel, checkLevelChange } = require('../utils/levelUtils');
 
 module.exports = {
   name: 'messageCreate',
+
   async execute(message) {
     if (message.author.bot) return;
 
     const userId = message.author.id;
 
     try {
-      let user = await User.findOne({ userId });
+      // Atomically increment message count and return updated user
+      let user = await User.findOneAndUpdate(
+        { userId },
+        { $inc: { messages: 1 } },
+        { new: true, upsert: true }
+      );
 
-      if (!user) {
-        user = new User({ userId, messages: 0, notificationsEnabled: true, level: 0 });
+      // Ensure default properties if user is new
+      if (!user.level) {
+        user.level = levels[0].level;
+        user.notificationsEnabled = true;
       }
 
-      user.messages += 1;
+      // Compare previous vs new level
+      const previousLevel = user.level;
+      const { hasChanged, newLevel } = checkLevelChange(user, levels, previousLevel);
 
-      const nextLevel = levels.find(l => l.messages === user.messages);
+      // Save updated user
+      await user.save();
 
-      if (nextLevel) {
-        user.level = nextLevel.level;
+      // If the user's level changed and notifications are enabled
+      if (hasChanged && user.notificationsEnabled) {
+        // Try to send private DM
+        try {
+          await message.author.send(
+            `🎉 Congratulations! Your level has changed: you are now **${newLevel}**.`
+          );
+        } catch {
+          console.warn(`Could not send DM to user ${userId}`);
+        }
 
-        if (user.notificationsEnabled) {
-          const levelUpEmbed = new EmbedBuilder()
-            .setTitle(`🎉 Level Up!`)
-            .setDescription(`You've reached **${nextLevel.level}**! ${nextLevel.message}`)
-            .setColor(0x00ff00)
-            .setFooter({ text: 'You can disable these notifications using /disable-levelup.' });
-
-          await message.reply({ embeds: [levelUpEmbed] });
+        // Also log to configured guild channel (if set)
+        const guildConfig = await GuildConfig.findOne({ guildId: message.guild.id });
+        if (guildConfig && guildConfig.levelUpLogChannel) {
+          const logChannel = message.guild.channels.cache.get(guildConfig.levelUpLogChannel);
+          if (logChannel) {
+            await logChannel.send(
+              `📈 <@${userId}> has been reassigned to **${newLevel}**.`
+            );
+          }
         }
       }
-
-      await user.save();
     } catch (err) {
-      console.error(err);
+      console.error('Error handling messageCreate event:', err);
     }
   },
 };

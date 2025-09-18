@@ -1,55 +1,119 @@
-const { recalculateLevel, checkLevelUp } = require('../../utils/levelUtils');
+/**
+ * Slash Command: /add-messages
+ * ----------------------------------------
+ * Allows administrators to manually add messages
+ * to a user's total message count. If the update
+ * causes the user's level to change (up or down):
+ * - The user is notified privately via DM.
+ * - The change is logged in the configured log channel (if set).
+ *
+ * Responses are always private (ephemeral) to the admin.
+ */
 
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const User = require('../../schemas/userSchema');
+const GuildConfig = require('../../schemas/config');
 const levels = require('../../data/levels');
+const { checkLevelChange } = require('../../utils/levelUtils');
 
 module.exports = {
   admin: true,
+
+  // Define the slash command structure
   data: new SlashCommandBuilder()
     .setName('add-messages')
-    .setDescription('Add messages to a user\'s total.')
+    .setDescription("Manually add messages to a user's total.")
     .addUserOption(option =>
-      option.setName('target')
-        .setDescription('The user to add messages to.')
-        .setRequired(true))
+      option
+        .setName('target')
+        .setDescription('The user to update.')
+        .setRequired(true),
+    )
     .addIntegerOption(option =>
-      option.setName('amount')
-        .setDescription('The number of messages to add.')
-        .setRequired(true)),
-  async execute(interaction) {
-    const target = interaction.options.getUser('target');
-    const amount = interaction.options.getInteger('amount');
+      option
+        .setName('amount')
+        .setDescription('Number of messages to add.')
+        .setRequired(true),
+    ),
 
-    if (amount <= 0) {
+  // Command execution handler
+  async execute(interaction) {
+    try {
+      // Extract input values from the slash command
+      const target = interaction.options.getUser('target');
+      const amount = interaction.options.getInteger('amount');
+
+      // Validate input: must be a positive number
+      if (amount <= 0) {
+        return interaction.reply({
+          content: '⚠️ Please provide a valid positive number.',
+          ephemeral: true,
+        });
+      }
+
+      // Look up the user in the database, or create a new record if none exists
+      let user = await User.findOne({ userId: target.id });
+
+      if (!user) {
+        user = new User({
+          userId: target.id,
+          messages: 0,
+          level: levels[0].level, // default starting level
+          notificationsEnabled: true,
+        });
+      }
+
+      // Store previous level before modification
+      const previousLevel = user.level;
+
+      // Increment the user's message count
+      user.messages += amount;
+
+      // Check if the user's level has changed
+      const { hasChanged, newLevel, message } = checkLevelChange(user, levels, previousLevel);
+
+      // Save updated user data back to the database
+      await user.save();
+
+      // Build admin response
+      let replyMessage = `✅ Added **${amount} messages** to **${target.username}**.\nNew total: **${user.messages} messages**.`;
+
+      if (hasChanged) {
+        replyMessage += `\n📈 Level change: ${message}`;
+
+        // Notify user via DM
+        try {
+          await target.send(
+            `🎉 Your level has changed! You are now **${newLevel}**. Keep up the great work!`
+          );
+        } catch {
+          console.warn(`Could not send DM to user ${target.id}`);
+        }
+
+        // Log to configured guild channel
+        const guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
+        if (guildConfig && guildConfig.levelUpLogChannel) {
+          const logChannel = interaction.guild.channels.cache.get(guildConfig.levelUpLogChannel);
+          if (logChannel) {
+            await logChannel.send(
+              `📈 <@${target.id}> has been reassigned to **${newLevel}** (via admin adjustment).`
+            );
+          }
+        }
+      }
+
+      // Respond privately to the admin
       return interaction.reply({
-        content: 'Please provide a valid positive number.',
+        content: replyMessage,
+        ephemeral: true,
+      });
+    } catch (error) {
+      console.error('Error in /add-messages command:', error);
+
+      return interaction.reply({
+        content: '❌ An error occurred while processing this command. Please try again later.',
         ephemeral: true,
       });
     }
-
-    let user = await User.findOne({ userId: target.id });
-
-    if (!user) {
-      user = new User({ userId: target.id, messages: 0, level: levels[0].level });
-    }
-
-    user.messages += amount;
-
-    // Check if the user has leveled up
-    const { hasLeveledUp, message } = checkLevelUp(user, levels);
-    await user.save();
-
-    const embedDescription = hasLeveledUp
-      ? `${message}\n\nAdded **${amount} messages**. New total: **${user.messages} messages**.`
-      : `Added **${amount} messages** to **${target.username}**.\nNew total: **${user.messages} messages**.`;
-
-    const confirmationEmbed = new EmbedBuilder()
-      .setTitle(hasLeveledUp ? '🎉 Level Up!' : 'Messages Added')
-      .setDescription(embedDescription)
-      .setColor(0x3498db)
-      .setFooter({ text: `Command executed by ${interaction.user.tag}` });
-
-    return interaction.reply({ embeds: [confirmationEmbed] });
   },
 };
