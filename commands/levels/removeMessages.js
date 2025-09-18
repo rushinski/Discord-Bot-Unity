@@ -12,7 +12,7 @@
  * Responses are always private (ephemeral) to the admin.
  */
 
-const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
+const { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const User = require('../../schemas/userSchema');
 const GuildConfig = require('../../schemas/config');
 const levels = require('../../data/levels');
@@ -100,9 +100,18 @@ module.exports = {
         if (guildConfig && guildConfig.levelUpLogChannel) {
           const logChannel = interaction.guild.channels.cache.get(guildConfig.levelUpLogChannel);
           if (logChannel) {
-            await logChannel.send(
-              `📉 <@${target.id}> has been reassigned to **${newLevel}** (via admin adjustment).`
-            );
+            const embed = new EmbedBuilder()
+              .setColor(0xED4245) // red
+              .setTitle("📉 Level Adjustment")
+              .setDescription(`<@${target.id}> has been reassigned to **${newLevel}** (via admin adjustment).`)
+              .addFields(
+                { name: "Action", value: "Messages Removed", inline: true },
+                { name: "Amount", value: `${amount}`, inline: true },
+                { name: "New Total", value: `${user.messages}`, inline: true }
+              )
+              .setTimestamp();
+
+            await logChannel.send({ embeds: [embed] });
           }
         }
       }

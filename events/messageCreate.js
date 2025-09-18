@@ -11,6 +11,7 @@
  *   channel if set via /set level-up-log.
  */
 
+const { EmbedBuilder } = require('discord.js');
 const User = require('../schemas/userSchema');
 const GuildConfig = require('../schemas/config');
 const levels = require('../data/levels');
@@ -61,9 +62,16 @@ module.exports = {
         if (guildConfig && guildConfig.levelUpLogChannel) {
           const logChannel = message.guild.channels.cache.get(guildConfig.levelUpLogChannel);
           if (logChannel) {
-            await logChannel.send(
-              `📈 <@${userId}> has been reassigned to **${newLevel}**.`
-            );
+            const embed = new EmbedBuilder()
+              .setColor(0x5865F2) // blurple
+              .setTitle("📈 Level Up!")
+              .setDescription(`<@${userId}> has been reassigned to **${newLevel}**.`)
+              .addFields(
+                { name: "Total Messages", value: `${user.messages}`, inline: true }
+              )
+              .setTimestamp();
+
+            await logChannel.send({ embeds: [embed] });
           }
         }
       }
