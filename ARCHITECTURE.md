@@ -31,7 +31,7 @@ The bot is a **modular, event-driven Node.js application** built with **discord.
 
 ### 🔹 Commands
 - Located under `/commands/` and organized by domain:
-  - **Levels** → progression management (`leaderboard`, `add/remove messages`, `reset`, `yapCheck`).
+  - **Levels** → progression management (`leaderboard`, `add/remove messages`, `reset`, `level progress`).
   - **Moderation** → expanded suite (`idBan`, `idUnban`, `strike`, `set`, `unset`, `verifyUser`).
   - **Miscellaneous** → utility commands (`say`, `getUtc`).
   - **Engagement** → `/sendRolesSelect`, `/sendRules`, `/sendTicketSetup`, `/sendVerification`, `/startGiveaway`.
