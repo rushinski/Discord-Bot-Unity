@@ -1,26 +1,37 @@
+/**
+ * Slash Command: /say
+ * ----------------------------------------
+ * Opens a modal where the user can type a message
+ * for the bot to repeat in the current channel.
+ *
+ * Notes:
+ * - Uses modal for multi-line input.
+ * - Works with the corresponding handler in modals/say.js.
+ * - Restricted to admins only.
+ */
+
 const { SlashCommandBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
 module.exports = {
-	admin: true,
-	data: new SlashCommandBuilder()
-		.setName('say')
-		.setDescription('Say something!'),
-	async execute(interaction, client) {
-		const modal = new ModalBuilder()
-		.setTitle('Say something!')
-		.setCustomId('say')
+  admin: true, // mark as admin-only
+  data: new SlashCommandBuilder()
+    .setName('say')
+    .setDescription('Open a modal to say something as the bot'),
 
-		const input = new TextInputBuilder()
-		.setCustomId('message')
-		.setPlaceholder('Type something...')
-		.setLabel('Message')
-		.setStyle(TextInputStyle.Paragraph)
+  async execute(interaction) {
+    const modal = new ModalBuilder()
+      .setTitle('Say something!')
+      .setCustomId('say');
 
-		const question = new ActionRowBuilder()
-		.addComponents(input)
+    const input = new TextInputBuilder()
+      .setCustomId('message')
+      .setLabel('Message')
+      .setPlaceholder('Type your message here...')
+      .setStyle(TextInputStyle.Paragraph)
+      .setRequired(true);
 
-		modal.addComponents(question)
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
 
-		await interaction.showModal(modal)
-	}
-}
+    await interaction.showModal(modal);
+  },
+};

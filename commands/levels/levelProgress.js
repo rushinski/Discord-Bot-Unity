@@ -30,7 +30,7 @@ module.exports = {
       if (!user) {
         return interaction.reply({
           content: "ℹ️ You haven’t started yet! Send some messages to begin your journey. 🗣️",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -65,14 +65,14 @@ module.exports = {
 
       return interaction.reply({
         content: responseMessage,
-        ephemeral: true,
+        flags: 64,
       });
     } catch (error) {
       console.error('Error in /level-progress command:', error);
 
       return interaction.reply({
         content: '❌ An error occurred while checking your progress. Please try again later.',
-        ephemeral: true,
+        flags: 64,
       });
     }
   },

@@ -43,7 +43,7 @@ module.exports = {
       if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
         return interaction.reply({
           content: '⚠️ You do not have permission to use this command.',
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -54,7 +54,7 @@ module.exports = {
       if (amount <= 0) {
         return interaction.reply({
           content: '⚠️ Please specify a valid positive number of messages to remove.',
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -64,7 +64,7 @@ module.exports = {
       if (!user) {
         return interaction.reply({
           content: `⚠️ ${target.tag} does not have any recorded messages.`,
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -118,14 +118,14 @@ module.exports = {
 
       return interaction.reply({
         content: confirmationMessage,
-        ephemeral: true,
+        flags: 64,
       });
     } catch (err) {
       console.error('Error executing /remove-messages command:', err);
 
       return interaction.reply({
         content: '⚠️ An error occurred while processing your request. Please try again later.',
-        ephemeral: true,
+        flags: 64,
       });
     }
   },

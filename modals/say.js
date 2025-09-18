@@ -1,36 +1,36 @@
+/**
+ * Modal Handler: say.js
+ * ----------------------------------------
+ * Handles modal submissions for the /say command.
+ *
+ * Notes:
+ * - Prevents abuse by blocking @everyone/@here/role mentions.
+ * - Provides ephemeral confirmation.
+ * - Errors are handled gracefully.
+ */
+
 module.exports = {
   customID: 'say',
-  async execute(interaction, client) {
+
+  async execute(interaction) {
     const message = interaction.fields.getTextInputValue('message');
 
-    // Function to replace @mentions with proper format
-    const formatMentions = (text) => {
-      // Replace user mentions
-      text = text.replace(/@(\d{17,19})/g, (match, userId) => {
-        const user = client.users.cache.get(userId);
-        return user ? `<@${userId}>` : match;
+    // 🚫 Prevent abusive mentions
+    if (/@everyone|@here|<@&\d+>/.test(message)) {
+      return interaction.reply({
+        content: '⚠️ Sorry, mass mentions (everyone, here, roles) are not allowed.',
+        flags: 64,
       });
+    }
 
-      // Replace role mentions
-      text = text.replace(/@&(\d{17,19})/g, (match, roleId) => {
-        const role = interaction.guild.roles.cache.get(roleId);
-        return role ? `<@&${roleId}>` : match;
-      });
-
-      return text;
-    };
-
-    // Format the message content
-    const formattedMessage = formatMentions(message);
-
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 }); // ephemeral confirmation
 
     try {
-      await interaction.channel.send(formattedMessage);
-      await interaction.deleteReply();
+      await interaction.channel.send(message);
+      await interaction.editReply('✅ Your message was sent successfully.');
     } catch (error) {
-      console.error('Failed to send message:', error);
-      await interaction.editReply('Failed to send message - Check if I have permission to send messages in this channel!');
+      console.error('Error in modal /say:', error);
+      await interaction.editReply('❌ Failed to send message. Please check if I have permission to post in this channel.');
     }
-  }
+  },
 };

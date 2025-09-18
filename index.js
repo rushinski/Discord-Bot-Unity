@@ -22,7 +22,7 @@ require('./utils/RegisterCommands.js')(client);
 
 console.log(`Logging in...`);
 client.login(client.config.TOKEN);
-client.on('ready', function () {
+client.on('clientReady', function () {
     console.log(`Logged in as ${client.user.tag}!`);
 });
 

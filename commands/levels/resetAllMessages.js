@@ -29,12 +29,12 @@ module.exports = {
       if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
         return interaction.reply({
           content: '⚠️ You do not have permission to use this command.',
-          ephemeral: true,
+          flags: 64,
         });
       }
 
       // Defer the reply to avoid the 3-second timeout
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 64 });
 
       // Perform a bulk update: reset messages and levels for all users
       const result = await User.updateMany(

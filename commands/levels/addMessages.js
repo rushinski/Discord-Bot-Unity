@@ -47,7 +47,7 @@ module.exports = {
       if (amount <= 0) {
         return interaction.reply({
           content: '⚠️ Please provide a valid positive number.',
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -114,14 +114,14 @@ module.exports = {
       // Respond privately to the admin
       return interaction.reply({
         content: replyMessage,
-        ephemeral: true,
+        flags: 64,
       });
     } catch (error) {
       console.error('Error in /add-messages command:', error);
 
       return interaction.reply({
         content: '❌ An error occurred while processing this command. Please try again later.',
-        ephemeral: true,
+        flags: 64,
       });
     }
   },

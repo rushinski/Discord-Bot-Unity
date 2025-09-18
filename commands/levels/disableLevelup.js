@@ -41,7 +41,7 @@ module.exports = {
       // Confirm success to the user (ephemeral)
       await interaction.reply({
         content: '✅ Your level-up notifications have been disabled. Use `/enable-levelup` to turn them back on.',
-        ephemeral: true,
+        flags: 64,
       });
     } catch (err) {
       // Log error for debugging but keep user-facing message professional
@@ -49,7 +49,7 @@ module.exports = {
 
       await interaction.reply({
         content: '⚠️ An error occurred while updating your settings. Please try again later.',
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
