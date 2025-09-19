@@ -9,7 +9,6 @@
  * - created-ticket-category: Category for created tickets
  * - join-leave-log: Text channel for join/leave notifications
  * - welcome-channel: Text channel for welcome messages
- * - total-members: Voice channel for member count display
  * - level-up-log: Text channel for level-up notifications
  * - utc-time: Voice channel for UTC time display
  * - utc-date: Voice channel for UTC date display
@@ -27,7 +26,7 @@ module.exports = {
   admin: true,
 
   data: new SlashCommandBuilder()
-    .setName('set')
+    .setName('configure')
     .setDescription('Configure guild log channels and categories.')
     .addStringOption(option =>
       option
@@ -40,7 +39,6 @@ module.exports = {
           { name: 'Created Ticket Category (Category)', value: 'created-ticket-category' },
           { name: 'Join Leave Log (Text Channel)', value: 'join-leave-log' },
           { name: 'Welcome Channel (Text Channel)', value: 'welcome-channel' },
-          { name: 'Total Member Count (Voice Channel)', value: 'total-members' },
           { name: 'Level Up Log (Text Channel)', value: 'level-up-log' },
           { name: 'UTC Time (Voice Channel)', value: 'utc-time' },
           { name: 'UTC Date (Voice Channel)', value: 'utc-date' },
@@ -89,7 +87,6 @@ module.exports = {
             });
           }
           break;
-        case 'total-members':
         case 'utc-time':
         case 'utc-date':
           if (channel.type !== ChannelType.GuildVoice) {
@@ -128,9 +125,6 @@ module.exports = {
           break;
         case 'welcome-channel':
           guildConfig.welcomeChannel = channelId;
-          break;
-        case 'total-members':
-          guildConfig.memberCountChannel = channelId;
           break;
         case 'level-up-log':
           guildConfig.levelUpLogChannel = channelId;

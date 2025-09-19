@@ -76,8 +76,6 @@ const RoleReactionMessageSchema = new mongoose.Schema(
 // Prevent duplicate category configs in the same guild
 RoleReactionMessageSchema.index({ guildId: 1, messageType: 1 }, { unique: true });
 
-module.exports = mongoose.model(
-  'RoleReactionMessage',
-  RoleReactionMessageSchema
-);
-
+module.exports =
+  mongoose.models.RoleReactionMessage ||
+  mongoose.model('RoleReactionMessage', RoleReactionMessageSchema);

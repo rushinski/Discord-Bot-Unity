@@ -61,4 +61,6 @@ const RoleCountConfigSchema = new mongoose.Schema(
 // Ensure uniqueness of role trackers per guild
 RoleCountConfigSchema.index({ guildId: 1, roleId: 1 }, { unique: true });
 
-module.exports = mongoose.model('RoleCountConfig', RoleCountConfigSchema);
+module.exports =
+  mongoose.models.RoleCountConfig ||
+  mongoose.model('RoleCountConfig', RoleCountConfigSchema);

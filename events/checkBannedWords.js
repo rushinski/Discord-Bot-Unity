@@ -14,7 +14,7 @@
  * - Tracks warnings and strikes in the Infractions schema.
  * - Bans users after 3 strikes or on critical offenses.
  * - Logs all actions to a configured moderation log channel.
- * - Notifies the offender with an ephemeral warning message.
+ * - Notifies the offender via DM.
  *
  * Dependencies:
  * - data/bannedWords.js (defines words + severity levels)
@@ -23,7 +23,7 @@
  *
  * Notes:
  * - Uses fuzzy matching (Levenshtein distance) to detect obfuscated words.
- * - Logs errors to console and provides ephemeral error notices to admins if moderation fails.
+ * - Logs errors to console and provides error notices to admins if moderation fails.
  */
 
 const { EmbedBuilder } = require('discord.js');
@@ -50,6 +50,7 @@ module.exports = {
     if (!match) return;
 
     try {
+      const originalContent = message.content; // ✅ Save content before deletion
       await message.delete();
 
       const { guild, author } = message;
@@ -64,6 +65,16 @@ module.exports = {
 
       // Apply severity rules
       if (match.severity === 'critical') {
+        // ✅ DM before banning
+        try {
+          await author.send(
+            `🚫 You have been **banned** from **${guild.name}** for using a critical banned word.\n` +
+            `**Word Used:** ${match.word}`
+          );
+        } catch {
+          console.warn(`Could not DM ${author.tag} before banning`);
+        }
+
         await guild.members.ban(userId, { reason: `Critical banned word: ${match.word}` });
         actionTaken = 'User banned (critical offense)';
       } else if (match.severity === 'high') {
@@ -85,8 +96,16 @@ module.exports = {
 
       await userInfractions.save();
 
-      // Ban if strike threshold reached
+      // ✅ Ban if strike threshold reached
       if (userInfractions.strikes >= 3) {
+        try {
+          await author.send(
+            `🚫 You have been **banned** from **${guild.name}** after reaching 3 strikes for banned words.`
+          );
+        } catch {
+          console.warn(`Could not DM ${author.tag} before banning`);
+        }
+
         await guild.members.ban(userId, { reason: 'Reached 3 strikes for banned words' });
         actionTaken = 'User banned (3 strikes)';
         userInfractions.strikes = 0;
@@ -94,13 +113,21 @@ module.exports = {
         await userInfractions.save();
       }
 
-      // Notify offender (ephemeral)
-      await message.reply({
-        content: `⚠️ You used a banned word. **Action:** ${actionTaken}. Current strikes: ${userInfractions.strikes}/3.`,
-        flags: 64,
-      });
+      // ✅ DM the offender (only if not already banned above)
+      if (!['User banned (critical offense)', 'User banned (3 strikes)'].includes(actionTaken)) {
+        try {
+          await author.send(
+            `⚠️ You used a banned word in **${guild.name}**.\n` +
+            `**Word Used:** ${match.word}\n` +
+            `**Action Taken:** ${actionTaken}\n` +
+            `Current strikes: ${userInfractions.strikes}/3.`
+          );
+        } catch {
+          console.warn(`Could not DM ${author.tag}`);
+        }
+      }
 
-      // Log to moderation channel
+      // ✅ Log to moderation channel
       const logChannelData = await GuildConfig.findOne({ guildId: guild.id });
       if (logChannelData?.moderationLogChannel) {
         const logChannel = guild.channels.cache.get(logChannelData.moderationLogChannel);
@@ -110,7 +137,8 @@ module.exports = {
             .setColor('Red')
             .addFields(
               { name: 'User', value: `${author.tag} (<@${userId}>)` },
-              { name: 'Message Content', value: message.content || 'No content' },
+              { name: 'Message Content', value: originalContent || 'No content' }, // ✅ Preserved content
+              { name: 'Banned Word', value: match.word }, // ✅ Explicit banned word
               { name: 'Severity', value: match.severity },
               { name: 'Action Taken', value: actionTaken },
               { name: 'Strikes', value: `${userInfractions.strikes}/3` },

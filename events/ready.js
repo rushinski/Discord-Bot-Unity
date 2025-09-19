@@ -1,3 +1,13 @@
+/**
+ * Event: ClientReady
+ * ------------------
+ * Fired when the bot comes online.
+ * - Sets bot activity
+ * - Connects to MongoDB
+ * - Restores active giveaways
+ * - Ensures reaction-role messages are restored with reactions
+ */
+
 const { ActivityType, EmbedBuilder } = require('discord.js');
 const mongoose = require('mongoose');
 const RoleReactionMessage = require('../schemas/roleReactionMessage');
@@ -7,43 +17,51 @@ const config = require('../config.json');
 module.exports = {
   name: 'clientReady',
   once: true,
+
   async execute(client) {
-    // Set bot activity
-    client.user.setActivity({
-      name: 'Listening to Commands...',
-      type: ActivityType.Custom,
-    });
-
-    // Connect to MongoDB
-    const mongoURL = config.MONGOURL;
-    if (!mongoURL) {
-      console.error('MongoDB URL is missing in config.');
-      return;
-    }
-
     try {
+      // 🟢 Set bot activity
+      client.user.setActivity({
+        name: 'Listening to Commands...',
+        type: ActivityType.Custom,
+      });
+      console.log('[System] Bot activity set.');
+
+      // 🔗 Connect to MongoDB
+      const mongoURL = config.MONGOURL;
+      if (!mongoURL) {
+        console.error('[Database] ❌ MongoDB URL is missing in config.');
+        return;
+      }
+
       await mongoose.connect(mongoURL);
-      console.log('Connected to the database!');
+      console.log('[Database] ✅ Connected to MongoDB.');
     } catch (error) {
-      console.error('Error connecting to the database:', error);
+      console.error('[Database] ❌ Error connecting to MongoDB:', error);
       return;
     }
 
-    // Restore Active Giveaways
+    // 🎁 Restore Active Giveaways
     try {
-      const activeGiveaways = await Giveaway.find();
-
+      const activeGiveaways = await Giveaway.find({});
       for (const giveaway of activeGiveaways) {
         const timeLeft = giveaway.endDate - Date.now();
+
         if (timeLeft > 0) {
           setTimeout(async () => {
             try {
-              const channel = await client.channels.fetch(giveaway.channelId);
-              const message = await channel.messages.fetch(giveaway.messageId);
-              const users = await message.reactions.cache.get('🎉').users.fetch();
+              const channel = await client.channels.fetch(giveaway.channelId).catch(() => null);
+              if (!channel) return;
+
+              const message = await channel.messages.fetch(giveaway.messageId).catch(() => null);
+              if (!message) return;
+
+              const users = await message.reactions.cache.get('🎉')?.users.fetch();
+              if (!users) return;
+
               users.delete(message.author.id); // Exclude bot
               const winners = users.random(giveaway.winnersCount);
-              const winnersMention = winners.map(winner => `<@${winner.id}>`).join(', ') || 'No winners';
+              const winnersMention = winners?.map(w => `<@${w.id}>`).join(', ') || 'No winners';
 
               const endEmbed = new EmbedBuilder()
                 .setTitle(`${giveaway.title} Ended!`)
@@ -51,10 +69,11 @@ module.exports = {
                 .setColor('Red')
                 .setTimestamp();
 
-              channel.send({ embeds: [endEmbed] });
+              await channel.send({ embeds: [endEmbed] });
               await Giveaway.deleteOne({ messageId: giveaway.messageId });
+              console.log(`[GiveawaySystem] ✅ Completed giveaway: ${giveaway.title}`);
             } catch (err) {
-              console.error('Error completing a giveaway:', err);
+              console.error('[GiveawaySystem] ❌ Error completing giveaway:', err);
             }
           }, timeLeft);
         } else {
@@ -62,39 +81,59 @@ module.exports = {
         }
       }
     } catch (error) {
-      console.error('Error restoring giveaways:', error);
+      console.error('[GiveawaySystem] ❌ Error restoring giveaways:', error);
     }
 
-    // Initialize Reaction Messages
+    // 🎭 Restore Reaction Roles
     try {
-      const reactionMessages = await RoleReactionMessage.find();
+      const reactionMessages = await RoleReactionMessage.find({ guildId: { $exists: true } });
 
       if (!reactionMessages.length) {
-        console.log('No reaction messages found in the database.');
+        console.log('[RoleSystem] ℹ️ No reaction-role configurations found in DB.');
         return;
       }
 
-      for (const messageData of reactionMessages) {
+      for (const config of reactionMessages) {
         try {
-          const channel = await client.channels.fetch(messageData.channelId);
+          if (!config.channelId || !config.messageId) {
+            console.warn(
+              `[RoleSystem] ⚠️ Skipping category "${config.messageType}" in guild ${config.guildId} — channelId or messageId missing (likely never sent).`
+            );
+            continue;
+          }
+
+          const channel = await client.channels.fetch(config.channelId).catch(() => null);
           if (!channel) {
-            console.log(`Channel ${messageData.channelId} not found.`);
+            console.warn(`[RoleSystem] ⚠️ Channel ${config.channelId} not found for guild ${config.guildId}.`);
             continue;
           }
 
-          const message = await channel.messages.fetch(messageData.messageId);
+          const message = await channel.messages.fetch(config.messageId).catch(() => null);
           if (!message) {
-            console.log(`Message ${messageData.messageId} not found.`);
+            console.warn(`[RoleSystem] ⚠️ Message ${config.messageId} not found for guild ${config.guildId}.`);
             continue;
           }
 
-          console.log(`Reaction message loaded: ${message.id}`);
+          // Ensure all configured emojis are present as reactions
+          for (const r of config.roles) {
+            const alreadyHasReaction = message.reactions.cache.has(r.emoji);
+            if (!alreadyHasReaction) {
+              try {
+                await message.react(r.emoji);
+                console.log(`[RoleSystem] ➕ Restored emoji ${r.emoji} on message ${message.id} (${config.messageType}).`);
+              } catch (err) {
+                console.error(`[RoleSystem] ❌ Failed to react with ${r.emoji} on message ${message.id}:`, err.message);
+              }
+            }
+          }
+
+          console.log(`[RoleSystem] ✅ Reaction-role message restored: ${config.messageType} (${message.id})`);
         } catch (err) {
-          console.error(`Error loading reaction message ${messageData.messageId}:`, err);
+          console.error(`[RoleSystem] ❌ Error restoring message for category "${config.messageType}":`, err);
         }
       }
     } catch (error) {
-      console.error('Error loading reaction messages:', error);
+      console.error('[RoleSystem] ❌ Error loading reaction-role messages:', error);
     }
   },
 };

@@ -14,7 +14,7 @@
  */
 
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
-const RoleCountConfig = require('../../schemas/RoleCountConfig');
+const RoleCountConfig = require('../../schemas/roleCountConfig');
 
 module.exports = {
   admin: true,

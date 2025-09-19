@@ -41,15 +41,18 @@ module.exports = {
       // Detect if user was banned or kicked
       let action = 'Left';
       try {
-        const fetchedLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberBanAdd });
-        const banLog = fetchedLogs.entries.first();
-        if (banLog && banLog.target.id === member.id) {
-          action = 'Banned';
-        } else {
-          const fetchedKickLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberKick });
-          const kickLog = fetchedKickLogs.entries.first();
-          if (kickLog && kickLog.target.id === member.id) {
-            action = 'Kicked';
+        // Check kick logs first
+        const fetchedKickLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberKick });
+        const kickLog = fetchedKickLogs.entries.first();
+        if (kickLog && kickLog.target.id === member.id && (Date.now() - kickLog.createdTimestamp) < 5000) {
+          action = 'Kicked';
+        }
+        else {
+          // Then check ban logs
+          const fetchedBanLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberBanAdd });
+          const banLog = fetchedBanLogs.entries.first();
+          if (banLog && banLog.target.id === member.id && (Date.now() - banLog.createdTimestamp) < 5000) {
+            action = 'Banned';
           }
         }
       } catch (error) {

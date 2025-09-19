@@ -25,7 +25,6 @@ const guildConfigSchema = new Schema({
   createdTicketCategory: { type: String, default: null },
   joinLeaveLogChannel: { type: String, default: null },
   welcomeChannel: { type: String, default: null },
-  memberCountChannel: { type: String, default: null },
   levelUpLogChannel: { type: String, default: null },
   utcTimeChannel: { type: String, default: null },
   utcDateChannel: { type: String, default: null },
