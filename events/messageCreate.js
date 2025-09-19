@@ -15,7 +15,7 @@ const { EmbedBuilder } = require('discord.js');
 const User = require('../schemas/userSchema');
 const GuildConfig = require('../schemas/config');
 const levels = require('../data/levels');
-const { recalculateLevel, checkLevelChange } = require('../utils/levelUtils');
+const { checkLevelChange } = require('../utils/levelUtils');
 
 module.exports = {
   name: 'messageCreate',
