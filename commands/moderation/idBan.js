@@ -1,45 +1,61 @@
-const { SlashCommandBuilder } = require('discord.js');
+/**
+ * Slash Command: /id-ban
+ * ----------------------------------------
+ * Bans a user from the server by their Discord ID.
+ *
+ * Example:
+ *   /id-ban userid:123456789012345678 reason:"Spamming"
+ *
+ * Notes:
+ * - Requires the "Ban Members" permission.
+ * - Useful for banning users who are not currently in the server.
+ */
+
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
   admin: true,
   data: new SlashCommandBuilder()
     .setName('id-ban')
-    .setDescription('Bans a user by their Discord ID.')
+    .setDescription('Ban a user by their Discord ID.')
     .addStringOption(option =>
-      option.setName('userid')
+      option
+        .setName('userid')
         .setDescription('The ID of the user to ban')
-        .setRequired(true))
+        .setRequired(true),
+    )
     .addStringOption(option =>
-      option.setName('reason')
-        .setDescription('The reason for the ban')
-        .setRequired(false)),
-  
-  async execute(interaction) {
-    // Check if the user executing the command has the necessary permissions
-    if (!interaction.member.permissions.has('BAN_MEMBERS')) {
-      return interaction.reply({ 
-        content: 'You do not have permission to use this command.', 
-        ephemeral: true 
-      });
-    }
+      option
+        .setName('reason')
+        .setDescription('Reason for the ban (optional)')
+        .setRequired(false),
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
+  async execute(interaction) {
     const userId = interaction.options.getString('userid');
     const reason = interaction.options.getString('reason') || 'No reason provided';
 
     try {
-      // Ban the user by their ID
+      // ✅ Ensure the bot has permission to ban
+      if (!interaction.guild.members.me.permissions.has(PermissionFlagsBits.BanMembers)) {
+        return interaction.reply({
+          content: '⚠️ I do not have permission to ban members in this server.',
+          flags: 64,
+        });
+      }
+
+      // ✅ Attempt ban by ID
       await interaction.guild.members.ban(userId, { reason });
-      
-      // Confirm the ban to the user
-      return interaction.reply({ 
-        content: `Successfully banned the user with ID **${userId}** for: ${reason}`, 
-        ephemeral: false 
+
+      return interaction.reply({
+        content: `🔨 Successfully banned user with ID **${userId}**.\nReason: ${reason}`,
       });
     } catch (error) {
-      console.error(error);
-      return interaction.reply({ 
-        content: `Failed to ban the user with ID **${userId}**. They might not exist or I lack permissions.`, 
-        ephemeral: true 
+      console.error('❌ Error in /id-ban command:', error);
+      return interaction.reply({
+        content: `❌ Failed to ban user with ID **${userId}**. They may not exist, or I lack the required permissions.`,
+        flags: 64,
       });
     }
   },
