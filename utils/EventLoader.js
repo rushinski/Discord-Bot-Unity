@@ -1,50 +1,66 @@
+/**
+ * Utility: EventLoader
+ * ----------------------------------------
+ * Dynamically loads event handlers from the events folder
+ * and registers them to the client instance.
+ *
+ * Notes:
+ * - Supports both `once` and `on` event bindings.
+ * - Validates event structure before loading.
+ * - Provides structured logs for successes and failures.
+ */
+
 const fs = require('fs');
 const path = require('path');
 const { Events } = require('discord.js');
 
-module.exports = function(client) {
-  const eventsDir = path.join(__dirname, '../events'); // Adjust this path if necessary
+module.exports = function EventLoader(client) {
+  const eventsDir = path.join(__dirname, '../events');
 
-  // Check if the events directory exists
   if (!fs.existsSync(eventsDir)) {
-    console.log('Events directory does not exist.');
+    console.warn('[EventLoader] ⚠️ Events directory does not exist.');
     return;
   }
 
-  // Read all files in the events directory
   const eventFiles = fs.readdirSync(eventsDir).filter(file => file.endsWith('.js'));
-
-  if (eventFiles.length === 0) {
-    console.log('No event files found.');
+  if (!eventFiles.length) {
+    console.warn('[EventLoader] ⚠️ No event files found.');
     return;
   }
+
+  let loadedCount = 0;
 
   for (const file of eventFiles) {
     const filePath = path.join(eventsDir, file);
-    const event = require(filePath);
+    let event;
 
-    // Check for valid event name and execute function
+    try {
+      event = require(filePath);
+    } catch (err) {
+      console.error(`[EventLoader] ❌ Failed to require ./${file}:`, err.message);
+      continue;
+    }
+
     if (typeof event.name !== 'string' || typeof event.execute !== 'function') {
-      console.log(`Could not load ${file}: Missing event name or execute function.`);
+      console.warn(`[EventLoader] ⚠️ Skipping ${file}: missing valid name or execute function.`);
       continue;
     }
 
     const eventName = Events[event.name] || event.name;
 
-    // Validate if the event name is valid within Discord.js
     if (!Object.values(Events).includes(eventName) && !Object.keys(Events).includes(eventName)) {
-      console.log(`Invalid event name "${event.name}" - Unknown to Discord.js.`);
+      console.warn(`[EventLoader] ⚠️ Invalid event name "${event.name}" in ${file}.`);
       continue;
     }
 
     try {
-      // Register the event: use 'once' or 'on' based on event.once property
       client[event.once ? 'once' : 'on'](eventName, (...args) => event.execute(...args));
-      console.log(`Loaded event: ${event.name}`);
-    } catch (error) {
-      console.error(`Error loading event "${event.name}":`, error);
+      console.log(`[EventLoader] ✅ Loaded event: ${event.name}`);
+      loadedCount++;
+    } catch (err) {
+      console.error(`[EventLoader] ❌ Error loading event "${event.name}":`, err.message);
     }
   }
 
-  console.log(`Loaded ${eventFiles.length} events!`);
+  console.log(`[EventLoader] 📦 ${loadedCount} events loaded.`);
 };

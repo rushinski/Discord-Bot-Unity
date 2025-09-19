@@ -1,112 +1,99 @@
-const { Client, PermissionsBitField, EmbedBuilder } = require('discord.js');
+/**
+ * Entry Point: index.js
+ * ----------------------------------------
+ * Bootstraps the Discord bot:
+ * - Initializes client with required intents
+ * - Loads components, events, and commands
+ * - Registers commands with Discord API
+ * - Handles interactions (commands, buttons, dropdowns, modals)
+ */
 
+const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js');
+
+// Client initialization
 const client = new Client({
-    intents: [
-        'Guilds',
-        'GuildMembers',
-        'GuildPresences',
-        'GuildMessages',
-        'MessageContent',
-        'GuildMessageReactions',
-        'MessageContent',
-    ]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 client.config = require('./config.json');
 client.cooldowns = new Map();
 client.cache = new Map();
 
-require('./utils/componentLoader.js')(client);
-require('./utils/eventLoader.js')(client);
-require('./utils/registerCommands.js')(client);
+// Load utilities (camelCase filenames)
+require('./utils/componentLoader')(client);
+require('./utils/eventLoader')(client);
 
-console.log(`Logging in...`);
+// Register slash commands with Discord
+(async () => {
+  try {
+    const registerCommands = require('./utils/registerCommands');
+    await registerCommands(client);
+  } catch (err) {
+    console.error('[Startup] ❌ Failed to register commands:', err.message);
+  }
+})();
+
+console.log('[Startup] 🔑 Logging in...');
 client.login(client.config.TOKEN);
-client.on('clientReady', function () {
-    console.log(`Logged in as ${client.user.tag}!`);
+
+client.once('clientReady', () => {
+  console.log(`[Startup] ✅ Logged in as ${client.user.tag}`);
 });
 
-async function InteractionHandler(interaction, type) {
+// -----------------------------
+// Interaction Dispatcher
+// -----------------------------
+async function handleInteraction(interaction, type) {
+  const key = interaction.customId ?? interaction.commandName;
+  const component = client[type]?.get(key);
 
-    const component = client[type].get( interaction.customId ?? interaction.commandName );
-    if (!component) {
-        // console.error(`${type} not found: ${interaction.customId ?? interaction.commandName}`);
-        return;
+  if (!component) return;
+
+  try {
+    // Permission checks
+    if (component.admin && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      return interaction.reply({
+        content: '⚠️ Only administrators can use this command!',
+        ephemeral: true,
+      });
     }
 
+    if (component.owner && interaction.user.id !== client.config.OWNER_ID) {
+      return interaction.reply({
+        content: '⚠️ Only the bot owner can use this command!',
+        ephemeral: true,
+      });
+    }
+
+    await component.execute(interaction, client);
+  } catch (error) {
+    console.error('[InteractionHandler] ❌ Error executing component:', error);
     try {
-        //command properties
-        if (component.admin) {
-            if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) return await interaction.reply({ content: `⚠️ Only administrators can use this command!`, ephemeral: true });
-        }
-
-        if (component.owner) {
-            if (interaction.user.id !== 'YOURUSERID') return await interaction.reply({ content: `⚠️ Only bot owners can use this command!`, ephemeral: true });
-        }
-
-        //the mod command property requires additional setup, watch the video here to set it up: https://youtu.be/2Tqy6Cp_10I?si=bharHI_Vw7qjaG2Q
-
-        /*
-            COMMAND PROPERTIES:
-
-            module.exports = {
-                admin: true,
-                data: new SlashCommandBuilder()
-                .setName('test')
-                .setDescription('test'),
-                async execute(interaction) { 
-                
-                }
-                }
-            }
-
-            You can use command properties in the module.exports statement by adding a valid property to : true,
-
-            VALID PROPERTIES:
-
-            admin : true/false
-            owner : true/false
-
-
-            You can add more command properties by following the prompt below and pasting it above in location with all the other statements:
-            
-            if (component.propertyname) {
-                if (logic statement logic) return await interaction.reply({ content: `⚠️ response to flag`, ephemeral: true });
-            }
-        */
-
-        await component.execute(interaction, client);
-    } catch (error) {
-        console.error("stack" in error ? error.stack : error);
-        await interaction.deferReply({ ephemeral: true }).catch( () => {} );
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.reply({
+          content: '❌ An error occurred while executing this interaction.',
+          ephemeral: true,
+        });
+      } else {
         await interaction.editReply({
-            content: `There was an error while executing this command!\n\`\`\`${error}\`\`\``,
-            embeds: [],
-            components: [],
-            files: []
-        }).catch( () => {} );
+          content: '❌ An error occurred while executing this interaction.',
+        });
+      }
+    } catch {
+      // swallow reply errors
     }
+  }
 }
 
-client.on('interactionCreate', async function(interaction) {
-    if (!interaction.isCommand()) return;
-    await InteractionHandler(interaction, 'commands');
-});
-
-
-client.on('interactionCreate', async function(interaction) {
-    if (!interaction.isButton()) return;
-    await InteractionHandler(interaction, 'buttons');
-});
-
-
-client.on('interactionCreate', async function(interaction) {
-    if (!interaction.isStringSelectMenu()) return;
-    await InteractionHandler(interaction, 'dropdowns');
-});
-
-
-client.on('interactionCreate', async function(interaction) {
-    if (!interaction.isModalSubmit()) return;
-    await InteractionHandler(interaction, 'modals');
+// Centralized interaction handling
+client.on('interactionCreate', async interaction => {
+  if (interaction.isCommand()) return handleInteraction(interaction, 'commands');
+  if (interaction.isModalSubmit()) return handleInteraction(interaction, 'modals');
 });
