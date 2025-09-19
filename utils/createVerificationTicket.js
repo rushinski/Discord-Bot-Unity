@@ -6,7 +6,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require('discord.js');
-const RoleReactionMessage = require('../schemas/RoleReactionMessage');
+const RoleReactionMessage = require('../schemas/roleReactionMessage');
 const Ticket = require('../schemas/ticket');
 const GuildConfig = require('../schemas/config');
 

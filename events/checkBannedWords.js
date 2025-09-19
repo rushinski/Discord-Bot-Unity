@@ -1,110 +1,142 @@
+/**
+ * Event: messageCreate → Banned Word Check
+ * ----------------------------------------
+ * Purpose:
+ * - Detect and handle use of banned words/phrases in messages.
+ * - Apply severity-based moderation actions:
+ *   - low: warning only (2 warnings = 1 strike)
+ *   - medium: 1 strike
+ *   - high: 2 strikes
+ *   - critical: instant ban
+ *
+ * Behavior:
+ * - Deletes offending messages immediately.
+ * - Tracks warnings and strikes in the Infractions schema.
+ * - Bans users after 3 strikes or on critical offenses.
+ * - Logs all actions to a configured moderation log channel.
+ * - Notifies the offender with an ephemeral warning message.
+ *
+ * Dependencies:
+ * - data/bannedWords.js (defines words + severity levels)
+ * - schemas/infractions.js (stores warnings + strikes per user/guild)
+ * - schemas/config.js (provides log channel IDs)
+ *
+ * Notes:
+ * - Uses fuzzy matching (Levenshtein distance) to detect obfuscated words.
+ * - Logs errors to console and provides ephemeral error notices to admins if moderation fails.
+ */
+
 const { EmbedBuilder } = require('discord.js');
 const levenshtein = require('fast-levenshtein');
-const bannedWords = require('../data/bannedWords'); // Import banned words
-const Infractions = require('../schemas/infractions'); // Import infractions schema
-const GuildConfig = require('../schemas/config'); // Import schema for log channel ID
+const bannedWords = require('../data/bannedWords');
+const Infractions = require('../schemas/infractions');
+const GuildConfig = require('../schemas/config');
 
-// Function to check if a word matches a banned word (fuzzy matching)
+// Fuzzy matching check
 function isSimilar(word, messageContent, threshold = 0.8) {
-  const normalizedWord = word.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Remove diacritical marks
-  const normalizedMessage = messageContent.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Normalize the message
-
-  // Compare the word with the message content using Levenshtein distance
+  const normalizedWord = word.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const normalizedMessage = messageContent.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const distance = levenshtein.get(normalizedWord.toLowerCase(), normalizedMessage.toLowerCase());
-  const similarity = 1 - distance / Math.max(normalizedWord.length, normalizedMessage.length); // Calculate similarity percentage
-
+  const similarity = 1 - distance / Math.max(normalizedWord.length, normalizedMessage.length);
   return similarity >= threshold;
 }
 
 module.exports = {
   name: 'messageCreate',
   async execute(message) {
-    // Ignore bots and system messages
     if (message.author.bot || !message.guild) return;
 
-    // Enhanced word detection using fuzzy matching
-    const containsBannedWord = bannedWords.some(word => {
-      return isSimilar(word, message.content);
-    });
-    if (!containsBannedWord) return;
+    const match = bannedWords.find(entry => isSimilar(entry.word, message.content));
+    if (!match) return;
 
-    // Delete the offending message
-    await message.delete().catch(() => null);
+    try {
+      await message.delete();
 
-    const userId = message.author.id;
-    const guild = message.guild;
+      const { guild, author } = message;
+      const userId = author.id;
 
-    // Fetch or initialize user's infractions
-    let userInfractions = await Infractions.findOne({ userId, guildId: guild.id });
-    if (!userInfractions) {
-      userInfractions = new Infractions({ userId, guildId: guild.id, strikes: 0 });
-    }
+      let userInfractions = await Infractions.findOne({ userId, guildId: guild.id });
+      if (!userInfractions) {
+        userInfractions = new Infractions({ userId, guildId: guild.id, strikes: 0, warnings: 0 });
+      }
 
-    // Increment strikes for the user
-    userInfractions.strikes += 1;
-    await userInfractions.save();
+      let actionTaken = '';
 
-    // Notify user about their infraction
-    await message.channel.send({
-      content: `⚠️ <@${userId}>, you said a no no word! This is strike ${userInfractions.strikes}/3.`,
-    });
-
-    // Get the log channel ID from the database
-    const logChannelData = await GuildConfig.findOne({ guildId: guild.id });
-    if (!logChannelData || !logChannelData.moderationLogChannel) return;
-
-    // Get the log channel using the stored ID
-    const logChannel = guild.channels.cache.get(logChannelData.moderationLogChannel);
-    if (!logChannel) return;
-
-    // Create an embed for the banned word detection
-    const embed = new EmbedBuilder()
-      .setTitle('Banned Word Detected')
-      .setColor('Red')
-      .addFields(
-        { name: 'User', value: `${message.author.tag} (<@${userId}>)` },
-        { name: 'Message Content', value: message.content || 'No content' },
-        { name: 'Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>` },
-        { name: 'Strikes', value: `${userInfractions.strikes}/3` }
-      )
-      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
-
-    // Send the embed to the log channel
-    logChannel.send({ embeds: [embed] }).catch(() => null);
-
-    // Timeout user if they reach 3 strikes
-    if (userInfractions.strikes >= 3) {
-      const member = await guild.members.fetch(userId).catch(() => null);
-      if (member) {
-        // Find the "No Media" role
-        const noMediaRole = guild.roles.cache.find(role => role.name === 'No Media'); // Replace with your role name
-
-        // Assign the "No Media" role to the user
-        if (noMediaRole) {
-          await member.roles.add(noMediaRole).catch(() => null);
+      // Apply severity rules
+      if (match.severity === 'critical') {
+        await guild.members.ban(userId, { reason: `Critical banned word: ${match.word}` });
+        actionTaken = 'User banned (critical offense)';
+      } else if (match.severity === 'high') {
+        userInfractions.strikes += 2;
+        actionTaken = '2 strikes (high severity)';
+      } else if (match.severity === 'medium') {
+        userInfractions.strikes += 1;
+        actionTaken = '1 strike (medium severity)';
+      } else if (match.severity === 'low') {
+        userInfractions.warnings = (userInfractions.warnings || 0) + 1;
+        if (userInfractions.warnings >= 2) {
+          userInfractions.warnings = 0; // Reset warnings
+          userInfractions.strikes += 1;
+          actionTaken = 'Converted 2 warnings into 1 strike';
+        } else {
+          actionTaken = 'Warning issued (low severity)';
         }
+      }
 
-        // Send a message informing the user of their restriction
-        await message.channel.send({
-          content: `⛔ <@${userId}>, you have been timed out for 1 hour and restricted from posting media for 24 hours due to repeated use of no no words.`,
-        });
+      await userInfractions.save();
 
-        // Apply timeout for 1 hour
-        await member.timeout(3600000, 'Used banned words 3 times'); // 1 hour timeout
-
-        // Reset strikes after timeout
+      // Ban if strike threshold reached
+      if (userInfractions.strikes >= 3) {
+        await guild.members.ban(userId, { reason: 'Reached 3 strikes for banned words' });
+        actionTaken = 'User banned (3 strikes)';
         userInfractions.strikes = 0;
+        userInfractions.warnings = 0;
         await userInfractions.save();
+      }
 
-        // Remove the "No Media" role after 24 hours
-        setTimeout(async () => {
-          if (member && noMediaRole) {
-            await member.roles.remove(noMediaRole).catch(() => null);
-            await message.channel.send({
-              content: `⏰ <@${userId}>, your restriction on posting media has been lifted after 24 hours.`,
+      // Notify offender (ephemeral)
+      await message.reply({
+        content: `⚠️ You used a banned word. **Action:** ${actionTaken}. Current strikes: ${userInfractions.strikes}/3.`,
+        flags: 64,
+      });
+
+      // Log to moderation channel
+      const logChannelData = await GuildConfig.findOne({ guildId: guild.id });
+      if (logChannelData?.moderationLogChannel) {
+        const logChannel = guild.channels.cache.get(logChannelData.moderationLogChannel);
+        if (logChannel) {
+          const embed = new EmbedBuilder()
+            .setTitle('Banned Word Detected')
+            .setColor('Red')
+            .addFields(
+              { name: 'User', value: `${author.tag} (<@${userId}>)` },
+              { name: 'Message Content', value: message.content || 'No content' },
+              { name: 'Severity', value: match.severity },
+              { name: 'Action Taken', value: actionTaken },
+              { name: 'Strikes', value: `${userInfractions.strikes}/3` },
+              { name: 'Warnings', value: `${userInfractions.warnings || 0}/2` },
+              { name: 'Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>` },
+            );
+
+          await logChannel.send({ embeds: [embed] });
+        }
+      }
+    } catch (error) {
+      console.error('Error handling banned word detection:', error);
+
+      // Attempt to notify admins via log channel
+      try {
+        const logChannelData = await GuildConfig.findOne({ guildId: message.guild.id });
+        if (logChannelData?.moderationLogChannel) {
+          const logChannel = message.guild.channels.cache.get(logChannelData.moderationLogChannel);
+          if (logChannel) {
+            await logChannel.send({
+              content: `❌ Error occurred while processing banned word detection for <@${message.author.id}>. Check console logs for details.`,
             });
           }
-        }, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
+        }
+      } catch {
+        // Fallback: if logging also fails, just rely on console
       }
     }
   },

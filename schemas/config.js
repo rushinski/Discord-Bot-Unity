@@ -14,6 +14,8 @@ const { Schema, model } = require('mongoose');
  * - welcomeChannel: Text channel for welcome messages
  * - memberCountChannel: Voice channel displaying total members
  * - levelUpLogChannel: Text channel for logging level-up events
+ * - utcTimeChannel: Voice channel displaying current UTC time
+ * - utcDateChannel: Voice channel displaying current UTC date
  */
 
 const guildConfigSchema = new Schema({
@@ -24,7 +26,9 @@ const guildConfigSchema = new Schema({
   joinLeaveLogChannel: { type: String, default: null },
   welcomeChannel: { type: String, default: null },
   memberCountChannel: { type: String, default: null },
-  levelUpLogChannel: { type: String, default: null }, 
+  levelUpLogChannel: { type: String, default: null },
+  utcTimeChannel: { type: String, default: null },
+  utcDateChannel: { type: String, default: null },
 });
 
 module.exports = model('GuildConfig', guildConfigSchema);

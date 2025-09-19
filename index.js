@@ -16,9 +16,9 @@ client.config = require('./config.json');
 client.cooldowns = new Map();
 client.cache = new Map();
 
-require('./utils/ComponentLoader.js')(client);
-require('./utils/EventLoader.js')(client);
-require('./utils/RegisterCommands.js')(client);
+require('./utils/componentLoader.js')(client);
+require('./utils/eventLoader.js')(client);
+require('./utils/registerCommands.js')(client);
 
 console.log(`Logging in...`);
 client.login(client.config.TOKEN);

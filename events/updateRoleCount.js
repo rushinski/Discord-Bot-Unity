@@ -8,7 +8,7 @@
  * "🐳︱Whales : 25"
  */
 
-const RoleCountConfig = require('../schemas/RoleCountConfig');
+const RoleCountConfig = require('../schemas/roleCountConfig');
 
 module.exports = {
   name: 'clientReady',

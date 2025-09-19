@@ -11,6 +11,8 @@
  * - welcome-channel: Text channel for welcome messages
  * - total-members: Voice channel for member count display
  * - level-up-log: Text channel for level-up notifications
+ * - utc-time: Voice channel for UTC time display
+ * - utc-date: Voice channel for UTC date display
  *
  * Notes:
  * - Settings are stored in the GuildConfig schema.
@@ -34,10 +36,12 @@ module.exports = {
           { name: 'Moderation Log (Text Channel)', value: 'moderation-log' },
           { name: 'Ticket Transcripts (Text Channel)', value: 'ticket-transcripts' },
           { name: 'Created Ticket Category (Category)', value: 'created-ticket-category' },
-          { name: 'Join Leave Log (Text Channel)', value: 'join-leave-log' }, // ✅ corrected
+          { name: 'Join Leave Log (Text Channel)', value: 'join-leave-log' },
           { name: 'Welcome Channel (Text Channel)', value: 'welcome-channel' },
           { name: 'Total Member Count (Voice Channel)', value: 'total-members' },
-          { name: 'Level Up Log (Text Channel)', value: 'level-up-log' }, // ✅ added
+          { name: 'Level Up Log (Text Channel)', value: 'level-up-log' },
+          { name: 'UTC Time (Voice Channel)', value: 'utc-time' },
+          { name: 'UTC Date (Voice Channel)', value: 'utc-date' },
         ),
     ),
 
@@ -65,7 +69,7 @@ module.exports = {
         case 'created-ticket-category':
           guildConfig.createdTicketCategory = null;
           break;
-        case 'join-leave-log': // ✅ corrected
+        case 'join-leave-log':
           guildConfig.joinLeaveLogChannel = null;
           break;
         case 'welcome-channel':
@@ -74,8 +78,14 @@ module.exports = {
         case 'total-members':
           guildConfig.memberCountChannel = null;
           break;
-        case 'level-up-log': // ✅ added
+        case 'level-up-log':
           guildConfig.levelUpLogChannel = null;
+          break;
+        case 'utc-time':
+          guildConfig.utcTimeChannel = null;
+          break;
+        case 'utc-date':
+          guildConfig.utcDateChannel = null;
           break;
         default:
           return interaction.reply({

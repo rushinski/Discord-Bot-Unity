@@ -1,4 +1,4 @@
-const ReadFolder = require('./ReadFolder.js');
+const ReadFolder = require('./readFolder.js');
 const { existsSync } = require('node:fs');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionsBitField: { Flags: Permissions } } = require('discord.js');

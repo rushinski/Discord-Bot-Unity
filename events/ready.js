@@ -1,6 +1,6 @@
 const { ActivityType, EmbedBuilder } = require('discord.js');
 const mongoose = require('mongoose');
-const RoleReactionMessage = require('../schemas/RoleReactionMessage');
+const RoleReactionMessage = require('../schemas/roleReactionMessage');
 const Giveaway = require('../schemas/giveaway');
 const config = require('../config.json');
 

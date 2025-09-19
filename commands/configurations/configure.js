@@ -11,6 +11,8 @@
  * - welcome-channel: Text channel for welcome messages
  * - total-members: Voice channel for member count display
  * - level-up-log: Text channel for level-up notifications
+ * - utc-time: Voice channel for UTC time display
+ * - utc-date: Voice channel for UTC date display
  *
  * Notes:
  * - Ensures channel type validation before saving.
@@ -40,6 +42,8 @@ module.exports = {
           { name: 'Welcome Channel (Text Channel)', value: 'welcome-channel' },
           { name: 'Total Member Count (Voice Channel)', value: 'total-members' },
           { name: 'Level Up Log (Text Channel)', value: 'level-up-log' },
+          { name: 'UTC Time (Voice Channel)', value: 'utc-time' },
+          { name: 'UTC Date (Voice Channel)', value: 'utc-date' },
         ),
     )
     .addStringOption(option =>
@@ -86,6 +90,8 @@ module.exports = {
           }
           break;
         case 'total-members':
+        case 'utc-time':
+        case 'utc-date':
           if (channel.type !== ChannelType.GuildVoice) {
             return interaction.reply({
               content: `⚠️ The field **${field}** requires a **Voice Channel**. Please provide a valid Voice Channel ID.`,
@@ -128,6 +134,12 @@ module.exports = {
           break;
         case 'level-up-log':
           guildConfig.levelUpLogChannel = channelId;
+          break;
+        case 'utc-time':
+          guildConfig.utcTimeChannel = channelId;
+          break;
+        case 'utc-date':
+          guildConfig.utcDateChannel = channelId;
           break;
       }
 
