@@ -1,11 +1,26 @@
+/**
+ * Command: /configure-reaction-roles
+ * ----------------------------------
+ * Configures or updates a reaction-role category dynamically.
+ * Stores category description and emoji:roleName mappings
+ * in the database for use by /send-role-select.
+ *
+ * Example usage:
+ * /configure-reaction-roles
+ *   category: continent
+ *   description: "Select your continent"
+ *   roles: 🦁:Africa, 🐼:Asia
+ */
+
 const { SlashCommandBuilder } = require('discord.js');
-const RoleReactionMessage = require('../schemas/RoleReactionMessage');
+const RoleReactionMessage = require('../../schemas/RoleReactionMessage');
 
 module.exports = {
   admin: true,
+
   data: new SlashCommandBuilder()
     .setName('configure-reaction-roles')
-    .setDescription('Configure a reaction role category dynamically.')
+    .setDescription('Configure a reaction-role category dynamically.')
     .addStringOption(option =>
       option
         .setName('category')
@@ -26,14 +41,14 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     try {
-      const category = interaction.options.getString('category');
-      const description = interaction.options.getString('description');
-      const rolesInput = interaction.options.getString('roles');
+      const category = interaction.options.getString('category').trim();
+      const description = interaction.options.getString('description').trim();
+      const rolesInput = interaction.options.getString('roles').trim();
 
-      // Parse emoji:roleName pairs
+      // 🧩 Parse emoji:roleName pairs
       const roles = rolesInput.split(',').map(pair => {
         const [emoji, roleName] = pair.trim().split(':');
         if (!emoji || !roleName) {
@@ -42,7 +57,7 @@ module.exports = {
         return { emoji: emoji.trim(), roleName: roleName.trim() };
       });
 
-      // Upsert (update if exists, else create new)
+      // 🔄 Upsert configuration
       const existing = await RoleReactionMessage.findOne({
         messageType: category,
         guildId: interaction.guild.id,
@@ -52,6 +67,7 @@ module.exports = {
         existing.description = description;
         existing.roles = roles;
         await existing.save();
+        console.log(`[RoleSystem] Updated reaction role config: ${category} in guild ${interaction.guild.id}`);
       } else {
         await RoleReactionMessage.create({
           messageType: category,
@@ -61,16 +77,20 @@ module.exports = {
           description,
           roles,
         });
+        console.log(`[RoleSystem] Created new reaction role config: ${category} in guild ${interaction.guild.id}`);
       }
 
-      await interaction.editReply(
-        `✅ Reaction role category **${category}** configured successfully!`
-      );
+      await interaction.editReply({
+        content: `✅ Reaction-role category **${category}** configured successfully!`,
+        flags: 64,
+      });
     } catch (error) {
-      console.error('Error configuring reaction roles:', error);
-      await interaction.editReply(
-        '❌ Failed to configure reaction roles. Please check your input format.'
-      );
+      console.error(`[RoleSystem] Error configuring reaction roles in guild ${interaction.guild?.id}:`, error);
+
+      await interaction.editReply({
+        content: '❌ Failed to configure reaction roles. Please check your input format.',
+        flags: 64,
+      });
     }
   },
 };
