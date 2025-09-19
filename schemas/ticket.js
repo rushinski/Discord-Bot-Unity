@@ -1,13 +1,29 @@
-const mongoose = require('mongoose');
+const { Schema, model } = require('mongoose');
 
-const ticketSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  channelId: { type: String, required: true },
-  guildId: { type: String, required: true },
-  ticketType: { type: String, required: true },
-  description: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-  status: { type: String, default: 'open' }, // Add this field with a default value of 'open'
-});
+/**
+ * Ticket Schema
+ * ----------------------------------------
+ * Represents an individual support or verification ticket.
+ * Tracks user, channel, type, and lifecycle status.
+ */
+const ticketSchema = new Schema(
+  {
+    userId: { type: String, required: true, index: true },
+    channelId: { type: String, required: true, unique: true },
+    guildId: { type: String, required: true, index: true },
+    ticketType: { type: String, required: true }, // "verification", "complaints", etc.
+    description: { type: String, default: null },
 
-module.exports = mongoose.model('Ticket', ticketSchema);
+    status: {
+      type: String,
+      enum: ['open', 'closed', 'pending'],
+      default: 'open',
+    },
+  },
+  { timestamps: true }
+);
+
+// Compound index for quick lookups by user/guild/status
+ticketSchema.index({ userId: 1, guildId: 1, status: 1 });
+
+module.exports = model('Ticket', ticketSchema);

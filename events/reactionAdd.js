@@ -8,7 +8,6 @@
 
 const { Events } = require('discord.js');
 const RoleReactionMessage = require('../schemas/roleReactionMessage');
-const createVerificationTicket = require('../utils/createVerificationTicket');
 
 module.exports = {
   name: Events.MessageReactionAdd,
@@ -24,12 +23,6 @@ module.exports = {
       // Fetch configuration from DB
       const config = await RoleReactionMessage.findOne({ messageId: message.id });
       if (!config) return;
-
-      // ✅ Handle verification category separately
-      if (config.messageType === 'verification' && emoji.name === '✅') {
-        await createVerificationTicket(member, reaction, user);
-        return;
-      }
 
       // 🎭 Find role by emoji mapping
       const roleConfig = config.roles.find(r => r.emoji === emoji.name);

@@ -1,66 +1,79 @@
+/**
+ * File: commands/moderation/verifyUser.js
+ * Purpose: Moderation command to initiate the verification process for a user.
+ * Notes:
+ * - Creates a verification ticket for the specified user.
+ * - Does not assign roles directly; staff handle verification inside the ticket.
+ */
+
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
+const Ticket = require('../../schemas/ticket');
 const createVerificationTicket = require('../../utils/createVerificationTicket');
 
 module.exports = {
   admin: true,
   data: new SlashCommandBuilder()
     .setName('verify-user')
-    .setDescription('Verify a user and place them into the ticket system.')
-    .addUserOption((option) =>
-      option
-        .setName('target')
-        .setDescription('The user to verify')
-        .setRequired(true)
-    ),
+    .setDescription('Initiates the verification process for a user by creating a verification ticket.')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to verify.')
+        .setRequired(true)),
+
   async execute(interaction) {
     try {
-      // Ensure the user has appropriate permissions
+      // Permission check
       if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
         return interaction.reply({
-          content: 'You do not have permission to use this command.',
-          ephemeral: true,
+          content: 'You do not have permission to verify users.',
+          flags: 64,
         });
       }
 
-      const targetUser = interaction.options.getUser('target');
-      const member = await interaction.guild.members.fetch(targetUser.id);
+      const user = interaction.options.getUser('user');
+      const member = await interaction.guild.members.fetch(user.id).catch(() => null);
 
       if (!member) {
         return interaction.reply({
-          content: 'The specified user could not be found in the server.',
-          ephemeral: true,
+          content: 'The specified user could not be found in this guild.',
+          flags: 64,
         });
       }
 
-      // Initial reply to acknowledge the command
-      await interaction.deferReply({ ephemeral: true });
-
-      // Remove all roles from the user
-      const rolesToRemove = member.roles.cache.filter((role) => role.name !== '@everyone');
-      await member.roles.remove(rolesToRemove);
-
-      // Notify the user
-      await member
-        .send(
-          `Your roles have been removed, and you have been placed into the verification system. A support ticket will be created for you shortly.`
-        )
-        .catch(console.error);
-
-      // Create a ticket for the user
-      await createVerificationTicket(member, { reply: null }, targetUser);
-
-      // Follow-up response after creating the ticket
-      await interaction.followUp({
-        content: `The user ${targetUser.tag} has been placed into the verification system.`,
+      // Check if user already has an open verification ticket
+      const existingTicket = await Ticket.findOne({
+        userId: user.id,
+        guildId: interaction.guild.id,
+        ticketType: 'verification',
+        status: 'open',
       });
-    } catch (error) {
-      console.error('Error verifying user:', error);
 
-      // If an error occurs, reply only if no reply was already sent
+      if (existingTicket) {
+        return interaction.reply({
+          content: `${user.tag} already has an open verification ticket.`,
+          flags: 64,
+        });
+      }
+
+      // Create verification ticket for user
+      await createVerificationTicket.create({
+        user: member.user,
+        guild: interaction.guild,
+        reply: (options) => interaction.reply(options), // emulate interaction API
+      });
+
+      await interaction.reply({
+        content: `A verification ticket has been created for ${user.tag}.`,
+        flags: 64,
+      });
+
+      console.log(`[TicketSystem] 🎟️ Verification ticket created for ${user.tag} in guild ${interaction.guild.id}`);
+    } catch (error) {
+      console.error('[TicketSystem] Error executing verify-user command:', error);
       if (!interaction.replied) {
         await interaction.reply({
-          content: 'An error occurred while processing the user. Please try again later.',
-          ephemeral: true,
+          content: 'An error occurred while initiating the verification process.',
+          flags: 64,
         });
       }
     }

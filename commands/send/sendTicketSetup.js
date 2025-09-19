@@ -1,75 +1,75 @@
+/**
+ * File: commands/send/sendTicketSetup.js
+ * Purpose: Sends the ticket system setup embed and dropdown menu.
+ *
+ * Notes:
+ * - Ticket options are dynamically loaded from the GuildConfig schema.
+ * - If no ticket types are configured, the command responds with guidance for setup.
+ * - Output is professional and recruiter-readable (no informal emojis).
+ */
+
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } = require('discord.js');
+const GuildConfig = require('../../schemas/config');
 
 module.exports = {
   admin: true,
   data: new SlashCommandBuilder()
     .setName('send-ticket-setup')
-    .setDescription('Sets up the ticket system'),
+    .setDescription('Send the ticket system setup embed and dropdown menu.'),
 
   async execute(interaction) {
-    const ticketEmbed = new EmbedBuilder()
-      .setColor('Blue')
-      .setTitle('Ticket Support')
-      .setDescription(
-        `Please select the type of ticket you wish to create from the dropdown menu below and click **Submit**. Available options include:
-        
-        🎓 **R4/R5 Application**: Apply for an R4 or R5 role.
-        🌾 **RSS Seller Application**: Apply for an RSS seller role.
-        🛠️ **Help**: Request general assistance.
-        📋 **Complaints**: File a formal complaint.
-        💡 **Suggestions**: Share your ideas or improvements.
-        ❓ **Other**: For any issues not listed above.`
-      )
-      .setFooter({ text: 'ORDER OF THE CRIMSON MOON 2024 ®' });
+    try {
+      // Retrieve guild configuration from the database
+      const config = await GuildConfig.findOne({ guildId: interaction.guild.id });
 
-    const ticketSelectMenu = new StringSelectMenuBuilder()
-      .setCustomId('ticketType')
-      .setPlaceholder('Select Ticket Type')
-      .addOptions([
-        {
-          label: 'R4/R5 Application',
-          value: 'application',
-          description: 'Apply for an R4 or R5 role',
-          emoji: '🎓',
-        },
-        {
-          label: 'RSS Seller Application',
-          value: 'rss_sellers',
-          description: 'Apply for an RSS seller role',
-          emoji: '🌾',
-        },
-        {
-          label: 'Help',
-          value: 'help',
-          description: 'Request general assistance',
-          emoji: '🛠️',
-        },
-        {
-          label: 'Complaints',
-          value: 'complaints',
-          description: 'File a formal complaint',
-          emoji: '📋',
-        },
-        {
-          label: 'Suggestions',
-          value: 'suggestions',
-          description: 'Share your ideas or improvements',
-          emoji: '💡',
-        },
-        {
-          label: 'Other',
-          value: 'other',
-          description: 'For any issues not listed above',
-          emoji: '❓',
-        },
-      ]);
+      // Ensure ticket types are configured before proceeding
+      if (!config || !config.ticketTypes || config.ticketTypes.length === 0) {
+        return interaction.reply({
+          content: 'No ticket types are configured. Use `/configure-ticket-system` with the `ticket-type add` option to define them before running this command.',
+          flags: 64,
+        });
+      }
 
-    const row1 = new ActionRowBuilder().addComponents(ticketSelectMenu);
+      // Construct embed for ticket system setup
+      const ticketEmbed = new EmbedBuilder()
+        .setColor('Blue')
+        .setTitle('Ticket Support')
+        .setDescription(
+          'Select the type of ticket you would like to open from the dropdown menu below.\n\n' +
+          'Our support team will review your request and respond as soon as possible.'
+        )
+        .setFooter({ text: `${interaction.guild.name} • Ticket System` })
+        .setTimestamp();
 
-    await interaction.reply({
-      embeds: [ticketEmbed],
-      components: [row1],
-      ephemeral: false,
-    });
+      // Build select menu dynamically from configured ticket types
+      const ticketSelectMenu = new StringSelectMenuBuilder()
+        .setCustomId('ticketType')
+        .setPlaceholder('Select a ticket type')
+        .addOptions(
+          config.ticketTypes.map(type => ({
+            label: type.label,
+            value: type.value,
+            description: type.description || 'No description provided.',
+          }))
+        );
+
+      const row = new ActionRowBuilder().addComponents(ticketSelectMenu);
+
+      // Send the setup message publicly in the channel
+      await interaction.reply({
+        embeds: [ticketEmbed],
+        components: [row],
+      });
+
+      console.log(`[TicketSystem] 📦 Ticket setup message dispatched in guild ${interaction.guild.id}`);
+    } catch (error) {
+      console.error('[TicketSystem] ❌ Error sending ticket setup message:', error);
+      if (!interaction.replied) {
+        await interaction.reply({
+          content: 'An error occurred while sending the ticket setup message. Please try again later.',
+          flags: 64,
+        });
+      }
+    }
   },
 };

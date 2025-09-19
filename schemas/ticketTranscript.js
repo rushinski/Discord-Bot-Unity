@@ -1,24 +1,29 @@
-const mongoose = require('mongoose');
+const { Schema, model } = require('mongoose');
 
-const ticketTranscriptSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  username: { type: String, required: true },
-  ticketType: { type: String, required: true },
-  description: { type: String, required: true },
-  messages: [
-    {
-      author: { type: String, required: true },
-      content: { type: String, required: true },
-      timestamp: { type: Date, required: true },
+/**
+ * TicketTranscript Schema
+ * ----------------------------------------
+ * Stores archived conversation data for a ticket.
+ * Primary storage is a Gist URL; inline messages are a fallback.
+ */
+const ticketTranscriptSchema = new Schema(
+  {
+    ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', required: true },
+    gistUrl: { type: String, default: null },
+
+    // Fallback storage if Gist upload fails
+    messages: {
+      type: [
+        {
+          author: { type: String, required: true },
+          content: { type: String, required: true },
+          timestamp: { type: Date, required: true },
+        },
+      ],
+      default: [],
     },
-  ],
-  createdAt: { type: Date, default: Date.now }, // Automatically records the creation time
-  updatedAt: { type: Date, default: Date.now }, // Automatically updates on modification
-});
+  },
+  { timestamps: true }
+);
 
-ticketTranscriptSchema.pre('save', function (next) {
-  this.updatedAt = Date.now(); // Updates the `updatedAt` field before saving
-  next();
-});
-
-module.exports = mongoose.model('TicketTranscript', ticketTranscriptSchema);
+module.exports = model('TicketTranscript', ticketTranscriptSchema);

@@ -1,229 +1,192 @@
-const {
-  Events,
-  PermissionsBitField,
-  EmbedBuilder,
-  AttachmentBuilder,
-} = require('discord.js');
+/**
+ * File: events/ticketButtons.js
+ * Purpose: Handles ticket-related button interactions (ping support, verify user, close ticket).
+ * Notes:
+ * - Resolves roles and channels dynamically from GuildConfig.
+ * - Delegates transcript handling to githubGistUtils.
+ * - Maintains professional error handling and logging standards.
+ */
+
+const { Events, PermissionsBitField, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const Ticket = require('../schemas/ticket');
 const GuildConfig = require('../schemas/config');
-const { createWriteStream, unlink } = require('fs');
-const path = require('path');
-const config = require('../config.json');
+const uploadTranscript = require('../utils/githubGistUtils');
+const TicketTranscript = require('../schemas/ticketTranscript');
 
-const cooldowns = new Map(); // To track ping cooldowns per ticket channel
+const cooldowns = new Map();
 
 module.exports = {
   name: Events.InteractionCreate,
+
   async execute(interaction) {
     if (!interaction.isButton()) return;
 
-    const { customId, channel, guild, member } = interaction;
-
-    const UPPER_SUPPORT_ROLE_ID = '1319567279511572491'; // Replace with your support role ID
-    const VIP_ROLE_ID = '1245564960269144205';
-    const PING_DELAY = 15 * 60 * 1000; // 15 minutes in milliseconds
-    let ticket;
-
     try {
+      const { customId, channel, guild, member } = interaction;
+
+      // Load guild configuration
+      const guildConfig = await GuildConfig.findOne({ guildId: guild.id });
+      if (!guildConfig) {
+        return interaction.reply({
+          content: 'Guild configuration not found. Please configure the ticket system using `/configure`.',
+          flags: 64,
+        });
+      }
+
+      /**
+       * 🔔 Ping Support
+       */
       if (customId === 'ping-support') {
         const now = Date.now();
         const cooldownEnd = cooldowns.get(channel.id) || 0;
 
         if (now < cooldownEnd) {
-          const remainingTime = Math.ceil((cooldownEnd - now) / 60000); // Time left in minutes
+          const remainingTime = Math.ceil((cooldownEnd - now) / 60000);
           return interaction.reply({
             content: `You cannot ping support yet. Try again in ${remainingTime} minutes.`,
-            ephemeral: true,
+            flags: 64,
           });
         }
 
-        cooldowns.set(channel.id, now + PING_DELAY);
+        cooldowns.set(channel.id, now + 15 * 60 * 1000); // 15 minutes
         await interaction.reply({
-          content: `<@&${UPPER_SUPPORT_ROLE_ID}> has been pinged for assistance.`,
-          ephemeral: false,
+          content: `<@&${guildConfig.upperSupportRoleId}> has been pinged for assistance.`,
         });
+
+        console.log(`[TicketSystem] 🔔 Support pinged in ticket ${channel.id}`);
       }
 
+      /**
+       * ✅ Verify User
+       */
       if (customId === 'verify-user') {
-        if (!member.roles.cache.has(UPPER_SUPPORT_ROLE_ID)) {
+        if (!guildConfig.verificationRoleId) {
           return interaction.reply({
-            content: "You don't have permission to verify users.",
-            ephemeral: true,
+            content: 'Verification role not configured. Please set it using `/configure`.',
+            flags: 64,
           });
         }
 
-        ticket = await Ticket.findOne({ channelId: channel.id });
+        if (!member.roles.cache.has(guildConfig.upperSupportRoleId)) {
+          return interaction.reply({
+            content: 'You do not have permission to verify users.',
+            flags: 64,
+          });
+        }
+
+        const ticket = await Ticket.findOne({ channelId: channel.id });
         if (!ticket) {
           return interaction.reply({
             content: 'This ticket is not found in the database.',
-            ephemeral: true,
+            flags: 64,
           });
         }
 
-        const ticketOwner = await guild.members.fetch(ticket.userId);
+        const ticketOwner = await guild.members.fetch(ticket.userId).catch(() => null);
         if (!ticketOwner) {
           return interaction.reply({
-            content: "Couldn't find the ticket creator in the guild.",
-            ephemeral: true,
+            content: 'Unable to locate the ticket creator in the guild.',
+            flags: 64,
           });
         }
 
-        await ticketOwner.roles.add(VIP_ROLE_ID);
+        await ticketOwner.roles.add(guildConfig.verificationRoleId);
         await interaction.reply({
-          content: `${ticketOwner.user.tag} has been verified and given the VIP role.`,
-          ephemeral: true,
+          content: `${ticketOwner.user.tag} has been verified and given access.`,
+          flags: 64,
         });
+
+        console.log(`[TicketSystem] ✅ Verified user ${ticketOwner.user.tag} in guild ${guild.id}`);
       }
 
-      const { Octokit } = await import('@octokit/rest'); // Dynamic import of Octokit
-      const octokit = new Octokit({ auth: config.GIST_TOKEN });
-
+      /**
+       * 📩 Close Ticket
+       */
       if (customId === 'close-ticket') {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
-        ticket = await Ticket.findOne({ channelId: channel.id });
+        const ticket = await Ticket.findOne({ channelId: channel.id });
         if (!ticket) {
           return interaction.editReply({
             content: 'This ticket is not found in the database.',
           });
         }
 
+        // Fetch messages for transcript
         const messages = await fetchChannelMessages(channel);
-        const transcriptFilePath = await saveTranscriptToFile(messages, channel);
 
-        const guildConfig = await GuildConfig.findOne({ guildId: guild.id });
-        const transcriptChannelId = guildConfig?.ticketTranscriptsChannel;
-
-        // Upload transcript to GitHub Gist
-        let gistUrl = null;
+        // Upload transcript (to Gist or fallback)
+        let transcriptUrl;
         try {
-          const transcriptContent = messages
-            .map((msg) => {
-              const timestamp = msg.createdAt.toISOString();
-              return `[${timestamp}] ${msg.author.tag}: ${msg.content || '[Embed/Attachment]'}\n`;
-            })
-            .join('');
-
-          const gistResponse = await octokit.gists.create({
-            files: {
-              [`${channel.name}-transcript.txt`]: {
-                content: transcriptContent,
-              },
-            },
-            public: false,
-            description: `Transcript for ${channel.name}`,
-          });
-
-          gistUrl = gistResponse.data.html_url;
+          transcriptUrl = await uploadTranscript(messages, channel, guildConfig);
         } catch (error) {
-          console.error('Failed to upload transcript to GitHub Gist:', error);
+          console.error('[TicketSystem] Failed to upload transcript:', error);
+          transcriptUrl = null;
         }
 
-        const transcriptUrl = gistUrl || `attachment://${path.basename(transcriptFilePath)}`;
+        // Save transcript record in DB
+        await TicketTranscript.create({
+          ticketId: ticket._id,
+          gistUrl: transcriptUrl,
+          messages: transcriptUrl ? [] : messages.map(msg => ({
+            author: msg.author.tag,
+            content: msg.content || '[Embed/Attachment]',
+            timestamp: msg.createdAt,
+          })),
+        });
+
+        // Send transcript notification
         const embed = new EmbedBuilder()
           .setColor('Green')
-          .setTitle('📩 Ticket Closed')
+          .setTitle('Ticket Closed')
           .setDescription(
-            `The ticket **${channel.name}** has been successfully closed. Below is the transcript link for your records:
-
-      [**Download Transcript**](${transcriptUrl})
-
-      🔍 Thank you for your cooperation and being part of our community.`
+            `The ticket **${channel.name}** has been closed.\n\n` +
+            (transcriptUrl ? `[View Transcript](${transcriptUrl})` : 'Transcript saved locally.')
           )
-          .setFooter({
-            text: `Ticket closed by ${member.user.tag}`,
-            iconURL: member.user.displayAvatarURL({ dynamic: true }),
-          })
+          .setFooter({ text: `Closed by ${member.user.tag}`, iconURL: member.user.displayAvatarURL() })
           .setTimestamp();
 
-        if (transcriptChannelId) {
-          const transcriptChannel = guild.channels.cache.get(transcriptChannelId);
+        if (guildConfig.ticketTranscriptsChannel) {
+          const transcriptChannel = guild.channels.cache.get(guildConfig.ticketTranscriptsChannel);
           if (transcriptChannel) {
-            const attachment = new AttachmentBuilder(transcriptFilePath);
-            await transcriptChannel.send({
-              embeds: [embed],
-              files: gistUrl ? [] : [attachment],
-            });
+            await transcriptChannel.send({ embeds: [embed] });
           }
         }
-
-        // try {
-        //   const ticketOwner = await guild.members.fetch(ticket.userId);
-        //   if (ticketOwner) {
-        //     const attachment = new AttachmentBuilder(transcriptFilePath);
-        //     await ticketOwner.send({
-        //       content:
-        //         gistUrl
-        //           ? `Here is the transcript of your closed ticket: ${gistUrl}`
-        //           : 'Here is the transcript of your closed ticket. Thank you for reaching out!',
-        //       files: gistUrl ? [] : [attachment],
-        //     });
-        //   }
-        // } catch (err) {
-        //   console.warn(`Unable to DM user (${ticket.userId}):`, err.message);
-        // }
 
         ticket.status = 'closed';
         await ticket.save();
 
-        if (!channel.permissionsFor(guild.members.me).has(PermissionsBitField.Flags.ManageChannels)) {
-          return interaction.editReply({
-            content: "I don't have permission to delete this channel.",
-          });
-        }
-
-        await interaction.editReply({
-          content: 'The ticket has been closed, and the transcript has been saved.',
-        });
+        await interaction.editReply({ content: 'The ticket has been closed and archived.' });
         await channel.delete();
 
-        unlink(transcriptFilePath, (err) => {
-          if (err) console.error('Error deleting transcript file:', err);
-        });
+        console.log(`[TicketSystem] 📩 Closed ticket ${channel.id} in guild ${guild.id}`);
       }
     } catch (error) {
-      console.error(`Error in button interaction: ${customId}`, error);
-      await interaction.reply({
-        content: 'An error occurred while handling this action.',
-        ephemeral: true,
-      });
+      console.error('[TicketSystem] Error in ticketButtons handler:', error);
+      if (!interaction.replied) {
+        await interaction.reply({
+          content: 'An error occurred while handling this ticket action.',
+          flags: 64,
+        });
+      }
     }
   },
 };
 
-// Function to fetch all messages from a channel
+/**
+ * Fetch all messages from a channel for transcript purposes.
+ */
 async function fetchChannelMessages(channel) {
   let messages = [];
   let lastMessageId;
 
   while (true) {
-    const fetchedMessages = await channel.messages.fetch({
-      limit: 100,
-      before: lastMessageId,
-    });
-    if (fetchedMessages.size === 0) break;
+    const fetched = await channel.messages.fetch({ limit: 100, before: lastMessageId });
+    if (fetched.size === 0) break;
 
-    messages = messages.concat(Array.from(fetchedMessages.values()));
-    lastMessageId = fetchedMessages.lastKey();
+    messages = messages.concat(Array.from(fetched.values()));
+    lastMessageId = fetched.lastKey();
   }
 
   return messages.reverse();
-}
-
-// Function to save messages to a text file
-async function saveTranscriptToFile(messages, channel) {
-  const filePath = path.join(__dirname, `${channel.name}-transcript.txt`);
-  const writeStream = createWriteStream(filePath);
-
-  writeStream.write(`Transcript for ${channel.name}\n\n`);
-  for (const msg of messages) {
-    const timestamp = msg.createdAt.toISOString();
-    writeStream.write(
-      `[${timestamp}] ${msg.author.tag}: ${msg.content || '[Embed/Attachment]'}\n`
-    );
-  }
-  writeStream.end();
-
-  await new Promise((resolve) => writeStream.on('finish', resolve));
-  return filePath;
 }

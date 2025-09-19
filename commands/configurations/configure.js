@@ -1,12 +1,9 @@
 /**
- * Slash Command: /set
- * ----------------------------------------
- * Configure guild-specific logging and channel settings.
+ * File: commands/configurations/configure.js
+ * Purpose: Configure guild-specific logging and general channel settings.
  *
  * Supported fields:
  * - moderation-log: Text channel for moderation logs
- * - ticket-transcripts: Text channel for ticket transcripts
- * - created-ticket-category: Category for created tickets
  * - join-leave-log: Text channel for join/leave notifications
  * - welcome-channel: Text channel for welcome messages
  * - level-up-log: Text channel for level-up notifications
@@ -14,6 +11,7 @@
  * - utc-date: Voice channel for UTC date display
  *
  * Notes:
+ * - Ticket system configuration has been moved to configure-ticket-system.js.
  * - Ensures channel type validation before saving.
  * - Settings are stored in the GuildConfig schema.
  * - Replies are ephemeral (flags: 64).
@@ -35,8 +33,6 @@ module.exports = {
         .setRequired(true)
         .addChoices(
           { name: 'Moderation Log (Text Channel)', value: 'moderation-log' },
-          { name: 'Ticket Transcripts (Text Channel)', value: 'ticket-transcripts' },
-          { name: 'Created Ticket Category (Category)', value: 'created-ticket-category' },
           { name: 'Join Leave Log (Text Channel)', value: 'join-leave-log' },
           { name: 'Welcome Channel (Text Channel)', value: 'welcome-channel' },
           { name: 'Level Up Log (Text Channel)', value: 'level-up-log' },
@@ -68,21 +64,12 @@ module.exports = {
       // ✅ Validate channel type against selected field
       switch (field) {
         case 'moderation-log':
-        case 'ticket-transcripts':
         case 'join-leave-log':
         case 'welcome-channel':
         case 'level-up-log':
           if (channel.type !== ChannelType.GuildText) {
             return interaction.reply({
               content: `⚠️ The field **${field}** requires a **Text Channel**. Please provide a valid Text Channel ID.`,
-              flags: 64,
-            });
-          }
-          break;
-        case 'created-ticket-category':
-          if (channel.type !== ChannelType.GuildCategory) {
-            return interaction.reply({
-              content: `⚠️ The field **${field}** requires a **Category**. Please provide a valid Category ID.`,
               flags: 64,
             });
           }
@@ -114,12 +101,6 @@ module.exports = {
         case 'moderation-log':
           guildConfig.moderationLogChannel = channelId;
           break;
-        case 'ticket-transcripts':
-          guildConfig.ticketTranscriptsChannel = channelId;
-          break;
-        case 'created-ticket-category':
-          guildConfig.createdTicketCategory = channelId;
-          break;
         case 'join-leave-log':
           guildConfig.joinLeaveLogChannel = channelId;
           break;
@@ -146,7 +127,7 @@ module.exports = {
         flags: 64,
       });
     } catch (error) {
-      console.error('❌ Error in /set command:', error);
+      console.error('[Config] Error in configure command:', error);
       return interaction.reply({
         content: '❌ An unexpected error occurred while updating the configuration. Please try again later.',
         flags: 64,
