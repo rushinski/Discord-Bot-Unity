@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const ms = require('ms'); // Ensure you have the 'ms' package installed
-const Giveaway = require('../schemas/giveaway'); // Import your MongoDB giveaway schema
+const Giveaway = require('../../schemas/giveaway'); // Import your MongoDB giveaway schema
 
 module.exports = {
   admin: true,
