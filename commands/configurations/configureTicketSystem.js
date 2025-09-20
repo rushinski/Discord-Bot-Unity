@@ -1,17 +1,17 @@
 /**
- * File: configureTicketSystem.js
- * Purpose: Slash command to configure ticket system settings for a guild.
+ * File: commands/configurations/configureTicketSystem.js
+ * Purpose: Provides administrators with a command to configure ticket system settings for a guild.
  *
  * Responsibilities:
- * - Allow administrators to define ticket categories, support/verification roles,
- *   transcript channels, and custom ticket types.
- * - Validate that the provided IDs are valid channels or roles.
+ * - Allow configuration of ticket categories, support and verification roles, and transcript channels.
  * - Manage ticket type lifecycle (add, remove, list).
- * - Persist all settings in the GuildConfig schema.
+ * - Validate provided IDs to ensure they are valid channels or roles.
+ * - Persist configuration in the GuildConfig schema.
  *
  * Notes for Recruiters:
- * A "ticket system" is a structured support system where users can open private
- * support channels (tickets). This command configures the backend rules for that system.
+ * This command is the administrative backbone of the ticket system.
+ * Administrators use it to define how tickets should function within the guild.
+ * Ticket types are dynamic, allowing flexibility for different support scenarios.
  */
 
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
@@ -56,8 +56,8 @@ module.exports = {
     ),
 
   /**
-   * Execute the configure-ticket-system command.
-   * @param {object} interaction - The Discord interaction instance.
+   * Executes the configure-ticket-system command.
+   * @param {object} interaction - Discord command interaction.
    */
   async execute(interaction) {
     const field = interaction.options.getString('field');
@@ -66,7 +66,7 @@ module.exports = {
     const typeDescription = interaction.options.getString('description') || '';
 
     try {
-      // Fetch or initialize guild configuration
+      // Retrieve or initialize guild configuration
       let guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
       if (!guildConfig) {
         guildConfig = new GuildConfig({ guildId: interaction.guild.id, ticketTypes: [] });
@@ -158,7 +158,7 @@ module.exports = {
           return interaction.reply({ content: 'Invalid configuration field selected.', flags: 64 });
       }
 
-      // Save updated configuration
+      // Save the updated configuration
       await guildConfig.save();
 
       // Confirm success

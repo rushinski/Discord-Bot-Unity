@@ -1,32 +1,53 @@
 /**
  * File: commands/send/sendVerification.js
  * Purpose: Sends the verification panel with a button to initiate the verification process.
- * Notes:
- * - The button delegates ticket creation to createVerificationTicket.js.
- * - Ensures guild configuration is validated before sending.
+ *
+ * Responsibilities:
+ * - Validate that the verification system is configured for the guild.
+ * - Send an embed with a verification button to the current channel.
+ * - Provide users with a clear entry point for the verification process.
+ *
+ * Notes for Recruiters:
+ * This command posts a verification panel where users can click a button to start the process.
+ * Clicking the button creates a private verification ticket for staff to review.
+ * This is part of the ticket system's structured verification workflow.
  */
 
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const {
+  SlashCommandBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+} = require('discord.js');
 const GuildConfig = require('../../schemas/config');
 
 module.exports = {
   admin: true,
+
   data: new SlashCommandBuilder()
     .setName('send-verification')
-    .setDescription('Sends the verification panel to the current channel.'),
+    .setDescription('Send the verification panel to the current channel.'),
 
+  /**
+   * Executes the send-verification command.
+   * @param {object} interaction - Discord command interaction.
+   */
   async execute(interaction) {
     try {
-      // Load guild configuration
+      // Load guild-specific configuration
       const guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
+
+      // Ensure the verification system is properly configured
       if (!guildConfig || !guildConfig.createdTicketCategory || !guildConfig.verificationRoleId) {
         return interaction.reply({
-          content: 'Verification system is not fully configured. Please set a ticket category and verification role using `/configure`.',
+          content:
+            'Verification system is not fully configured. Please set a ticket category and verification role using `/configure-ticket-system`.',
           flags: 64,
         });
       }
 
-      // Embed for verification system
+      // Construct the verification embed
       const verificationEmbed = new EmbedBuilder()
         .setColor('Blue')
         .setTitle('Server Verification')
@@ -38,7 +59,7 @@ module.exports = {
         .setFooter({ text: `${interaction.guild.name} • Verification System` })
         .setTimestamp();
 
-      // Button to start verification
+      // Create the verification button
       const verificationButton = new ButtonBuilder()
         .setCustomId('startVerification')
         .setLabel('Start Verification')
@@ -46,19 +67,20 @@ module.exports = {
 
       const row = new ActionRowBuilder().addComponents(verificationButton);
 
-      // Send verification panel
+      // Send the verification panel
       await interaction.reply({
         embeds: [verificationEmbed],
         components: [row],
         ephemeral: false,
       });
 
-      console.log(`[TicketSystem] 🪪 Sent verification panel in guild ${interaction.guild.id}`);
+      console.log(`[TicketSystem] Verification panel sent in guild ${interaction.guild.id}`);
     } catch (error) {
-      console.error('[TicketSystem] ❌ Error sending verification panel:', error);
+      console.error('[TicketSystem] Error sending verification panel:', error);
       if (!interaction.replied) {
         await interaction.reply({
-          content: 'An error occurred while sending the verification panel. Please try again later.',
+          content:
+            'An error occurred while sending the verification panel. Please try again later.',
           flags: 64,
         });
       }
