@@ -1,18 +1,16 @@
 /**
- * Event: guildMemberRemove
- * ----------------------------------------
- * Purpose:
- * - Handles members leaving a server (voluntary, kicked, or banned).
- * - Logs the leave event with detailed user/account info.
- * - Updates the member count channel dynamically.
+ * File: guildMemberRemove.js
+ * Purpose: Handles member departures and ensures accurate logging.
  *
- * Behavior:
- * - Detects whether the member left, was kicked, or banned.
- * - Sends a structured embed log to the configured join/leave log channel.
- * - Updates member count channel with the latest member count.
+ * Responsibilities:
+ * - Detect when a member leaves, is kicked, or is banned.
+ * - Log the departure in the join/leave log channel with relevant details.
+ * - Update the member count channel to reflect the change.
  *
- * Dependencies:
- * - schemas/config.js (fetches channel IDs for logging + member count)
+ * Notes for Recruiters:
+ * This module ensures that all member departures are tracked with
+ * clear context. It supports moderation transparency by distinguishing
+ * voluntary leaves from administrative actions (kicks/bans).
  */
 
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
@@ -24,7 +22,7 @@ module.exports = {
     if (!member.guild) return;
 
     try {
-      // Fetch guild configuration
+      // Retrieve guild-specific configuration
       const configData = await Config.findOne({ guildId: member.guild.id });
       if (!configData) return;
 
@@ -38,31 +36,30 @@ module.exports = {
       const leaveTime = new Date();
       const timeInServer = formatDuration(Math.floor((leaveTime - joinTime) / 1000));
 
-      // Detect if user was banned or kicked
+      // Default action is voluntary leave
       let action = 'Left';
+
+      // Attempt to determine if the user was kicked or banned
       try {
-        // Check kick logs first
-        const fetchedKickLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberKick });
-        const kickLog = fetchedKickLogs.entries.first();
+        const kickLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberKick });
+        const kickLog = kickLogs.entries.first();
         if (kickLog && kickLog.target.id === member.id && (Date.now() - kickLog.createdTimestamp) < 5000) {
           action = 'Kicked';
-        }
-        else {
-          // Then check ban logs
-          const fetchedBanLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberBanAdd });
-          const banLog = fetchedBanLogs.entries.first();
+        } else {
+          const banLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberBanAdd });
+          const banLog = banLogs.entries.first();
           if (banLog && banLog.target.id === member.id && (Date.now() - banLog.createdTimestamp) < 5000) {
             action = 'Banned';
           }
         }
-      } catch (error) {
-        console.error('Error fetching audit logs:', error);
+      } catch (auditError) {
+        console.error('[guildMemberRemove] Error retrieving audit logs:', auditError);
       }
 
-      // Leave log embed
+      // Departure log embed
       const embed = new EmbedBuilder()
         .setColor(action === 'Left' ? 'Orange' : action === 'Kicked' ? 'Yellow' : 'Red')
-        .setTitle(`📤 Member ${action}`)
+        .setTitle(`Member ${action}`)
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 1024 }))
         .addFields(
           { name: 'Username', value: member.user.tag, inline: true },
@@ -79,18 +76,21 @@ module.exports = {
 
       // Update member count channel
       if (memberCountChannelInstance) {
-        const newChannelName = `👥︱Total Members: ${member.guild.memberCount}`;
+        const newChannelName = `Total Members: ${member.guild.memberCount}`;
         if (memberCountChannelInstance.name !== newChannelName) {
           await memberCountChannelInstance.setName(newChannelName);
         }
       }
     } catch (error) {
-      console.error('Error handling guildMemberRemove:', error);
+      console.error('[guildMemberRemove] Error processing member departure:', error);
     }
   },
 };
 
-// Utility function for duration formatting
+/**
+ * Utility: formatDuration
+ * Returns a human-readable string for a duration given in seconds.
+ */
 function formatDuration(seconds) {
   const days = Math.floor(seconds / (24 * 3600));
   const hours = Math.floor((seconds % (24 * 3600)) / 3600);

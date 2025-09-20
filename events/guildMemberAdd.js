@@ -1,18 +1,16 @@
 /**
- * Event: guildMemberAdd
- * ----------------------------------------
- * Purpose:
- * - Handles new member joins.
- * - Sends a welcome message to the configured welcome channel.
- * - Logs the join event to the join/leave log channel.
- * - Updates the member count channel (if configured).
+ * File: guildMemberAdd.js
+ * Purpose: Handles new member joins and maintains accurate server state.
  *
- * Behavior:
- * - Welcome message is kept simple and reusable across servers.
- * - Detailed join log includes user info and account age.
+ * Responsibilities:
+ * - Send a structured welcome message to the configured welcome channel.
+ * - Log join events in the join/leave log channel with user account details.
+ * - Update the member count channel when a new member joins.
  *
- * Dependencies:
- * - schemas/config.js (fetches channel IDs for welcome/log/member count)
+ * Notes for Recruiters:
+ * This module ensures that new members are acknowledged and that
+ * the server maintains accurate join records for moderation and
+ * community management purposes.
  */
 
 const { Events, EmbedBuilder } = require('discord.js');
@@ -25,7 +23,7 @@ module.exports = {
     if (!member.guild) return;
 
     try {
-      // Fetch guild configuration
+      // Retrieve guild-specific configuration
       const configData = await Config.findOne({ guildId: member.guild.id });
       if (!configData) return;
 
@@ -35,27 +33,26 @@ module.exports = {
       const joinLeaveLogChannelInstance = member.guild.channels.cache.get(joinLeaveLogChannel);
       const memberCountChannelInstance = member.guild.channels.cache.get(memberCountChannel);
 
-      // Calculate account age
+      // Calculate account age for context
       const accountCreatedAt = member.user.createdAt;
       const joinedAt = new Date();
       const accountAge = calculateDuration(accountCreatedAt, joinedAt);
 
-      // Simple welcome embed
+      // Welcome message embed
       const welcomeEmbed = new EmbedBuilder()
         .setColor('Green')
-        .setTitle('👋 Welcome!')
+        .setTitle('Welcome')
         .setDescription(
-          `Hey **${member.user.username}**, welcome to **${member.guild.name}**!\n\n` +
-          `We’re glad to have you here. 🎉\n` +
+          `Hello **${member.user.username}**, welcome to **${member.guild.name}**.\n\n` +
           `You are member #${member.guild.memberCount}.`
         )
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
         .setTimestamp();
 
-      // Join log embed
+      // Detailed join log embed
       const logEmbed = new EmbedBuilder()
         .setColor('Green')
-        .setTitle('📥 Member Joined')
+        .setTitle('Member Joined')
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 1024 }))
         .addFields(
           { name: 'Username', value: member.user.tag, inline: true },
@@ -68,24 +65,27 @@ module.exports = {
         )
         .setTimestamp();
 
-      // Send embeds
+      // Send notifications
       if (welcomeChannelInstance) await welcomeChannelInstance.send({ embeds: [welcomeEmbed] });
       if (joinLeaveLogChannelInstance) await joinLeaveLogChannelInstance.send({ embeds: [logEmbed] });
 
       // Update member count channel
       if (memberCountChannelInstance) {
-        const newChannelName = `👥︱Total Members: ${member.guild.memberCount}`;
+        const newChannelName = `Total Members: ${member.guild.memberCount}`;
         if (memberCountChannelInstance.name !== newChannelName) {
           await memberCountChannelInstance.setName(newChannelName);
         }
       }
     } catch (error) {
-      console.error('Error handling guildMemberAdd:', error);
+      console.error('[guildMemberAdd] Error processing member join:', error);
     }
   },
 };
 
-// Utility function to calculate account age
+/**
+ * Utility: calculateDuration
+ * Returns a human-readable duration between two dates.
+ */
 function calculateDuration(startDate, endDate) {
   const ms = endDate - startDate;
   const seconds = Math.floor(ms / 1000);

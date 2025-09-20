@@ -1,27 +1,15 @@
 /**
- * Event: messageDelete
- * ----------------------------------------
- * Purpose:
- * - Logs deleted messages for moderation visibility.
+ * File: messageDelete.js
+ * Purpose: Logs deleted messages for moderation and accountability.
  *
- * Behavior:
- * - Excludes bot messages.
- * - Fetches guild configuration to find the moderation log channel.
- * - Creates a structured embed containing:
- *   - Author info
- *   - Nickname
- *   - User ID
- *   - Original message time
- *   - Deletion time
- *   - Channel reference
- *   - Message content (truncated if too long)
+ * Responsibilities:
+ * - Detect when a user message is deleted (excluding bot messages).
+ * - Log details including author, nickname, user ID, timestamps, channel, and message content.
+ * - Ensure long messages are truncated for readability in logs.
  *
- * Dependencies:
- * - schemas/config.js (fetches moderation log channel ID)
- *
- * Notes:
- * - Uses Discord timestamp formatting for human-readable logs.
- * - Silently ignores if moderation log channel is missing.
+ * Notes for Recruiters:
+ * This module helps moderators maintain transparency by tracking
+ * message deletions and retaining critical context for review.
  */
 
 const { EmbedBuilder } = require('discord.js');
@@ -33,26 +21,25 @@ module.exports = {
     if (!message.guild || !message.author || message.author.bot) return;
 
     try {
-      // Fetch guild configuration
+      // Retrieve guild-specific configuration
       const guildConfig = await GuildConfig.findOne({ guildId: message.guild.id });
       if (!guildConfig?.moderationLogChannel) return;
 
       const logChannel = message.guild.channels.cache.get(guildConfig.moderationLogChannel);
       if (!logChannel) return;
 
-      // Prepare message content
+      // Ensure content is valid and truncate if necessary
       const messageContent = message.content?.trim() || 'No content';
       const MAX_FIELD_LENGTH = 1024;
       const truncate = (content) =>
         content.length > MAX_FIELD_LENGTH ? content.slice(0, MAX_FIELD_LENGTH - 3) + '...' : content;
 
-      // Fetch user details
       const user = message.author;
       const nickname = message.member?.nickname || 'None';
 
-      // Create embed
+      // Create structured embed
       const embed = new EmbedBuilder()
-        .setTitle('🗑️ Message Deleted')
+        .setTitle('Message Deleted')
         .setColor('Red')
         .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 1024 }))
         .addFields(
@@ -72,28 +59,28 @@ module.exports = {
             inline: true,
           },
           { name: 'Channel', value: `<#${message.channel.id}>`, inline: false },
-          { name: 'Message Content', value: truncate(messageContent), inline: false },
+          { name: 'Message Content', value: truncate(messageContent), inline: false }
         )
         .setTimestamp();
 
-      // Send embed to log channel
+      // Send embed to moderation log channel
       await logChannel.send({ embeds: [embed] });
     } catch (error) {
-      console.error('Error logging deleted message:', error);
+      console.error('[messageDelete] Error logging deleted message:', error);
 
-      // Attempt fallback: notify admins in log channel if possible
+      // Attempt minimal fallback notification
       try {
         const guildConfig = await GuildConfig.findOne({ guildId: message.guild.id });
         if (guildConfig?.moderationLogChannel) {
           const logChannel = message.guild.channels.cache.get(guildConfig.moderationLogChannel);
           if (logChannel) {
             await logChannel.send({
-              content: `❌ Failed to log a deleted message. Check bot logs for details.`,
+              content: 'A message was deleted but could not be fully logged. See bot logs for details.',
             });
           }
         }
       } catch {
-        // Final fallback: console-only
+        // Final fallback: console only
       }
     }
   },
