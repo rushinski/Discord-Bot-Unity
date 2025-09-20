@@ -1,76 +1,116 @@
 /**
  * File: utils/createVerificationTicket.js
- * Purpose: Wrapper utility for creating verification tickets.
- * Notes:
- * - Supports both user-initiated (button) and staff-initiated (command) verification flows.
- * - Delegates actual ticket creation to the shared createTicket utility.
+ * Purpose: Creates a dedicated verification ticket channel for a user.
  */
 
-const GuildConfig = require('../schemas/config');
+const {
+  ChannelType,
+  PermissionFlagsBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+} = require('discord.js');
 const Ticket = require('../schemas/ticket');
-const createTicket = require('./createTicket');
 
 module.exports = {
-  /**
-   * Creates a verification ticket for the given user.
-   * 
-   * @param {object} context - The context object containing necessary info.
-   * @param {object} context.interaction - The original interaction (button/command).
-   * @param {object} context.targetUser - The user to create the verification ticket for.
-   */
   async create({ interaction, targetUser }) {
     try {
       const guild = interaction.guild;
 
-      // Load guild configuration
-      const guildConfig = await GuildConfig.findOne({ guildId: guild.id });
-      if (!guildConfig || !guildConfig.createdTicketCategory || !guildConfig.verificationRoleId) {
-        return interaction.reply({
-          content: 'Verification system is not fully configured. Please use `/configure` to set it up.',
-          flags: 64,
-        });
-      }
-
-      // Prevent duplicate verification tickets
+      // Prevent duplicate open verification tickets
       const existingTicket = await Ticket.findOne({
         userId: targetUser.id,
         guildId: guild.id,
         ticketType: 'verification',
-        status: 'open',
+        status: { $ne: 'closed' },
       });
 
       if (existingTicket) {
         return interaction.reply({
-          content: `${targetUser.tag} already has an open verification ticket.`,
+          content: `You already have an open verification ticket: <#${existingTicket.channelId}>`,
           flags: 64,
         });
       }
 
-      // Create ticket using shared utility
-      await createTicket.create(
-        {
-          ...interaction,
-          user: targetUser, // Override to use the target user, not the command executor
-        },
-        'verification',
-        null,
-        guildConfig,
-        true
-      );
+      // Create private channel for verification
+      const channel = await guild.channels.create({
+        name: `verify-${targetUser.username}`,
+        type: ChannelType.GuildText,
+        parent: guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && c.name === 'Tickets')?.id,
+        permissionOverwrites: [
+          {
+            id: guild.roles.everyone.id,
+            deny: [PermissionFlagsBits.ViewChannel],
+          },
+          {
+            id: targetUser.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+          },
+          {
+            id: interaction.client.user.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels],
+          },
+        ],
+      });
 
-      if (!interaction.replied) {
-        await interaction.reply({
-          content: `A verification ticket has been created for ${targetUser.tag}.`,
-          flags: 64,
-        });
-      }
+      // Save ticket in DB
+      await Ticket.create({
+        userId: targetUser.id,
+        guildId: guild.id,
+        channelId: channel.id,
+        ticketType: 'verification',
+        status: 'open',
+      });
 
-      console.log(`[TicketSystem] 🎟️ Verification ticket created for ${targetUser.tag} in guild ${guild.id}`);
+      // Create embed
+      const embed = new EmbedBuilder()
+        .setColor('Blue')
+        .setTitle('Verification Ticket')
+        .setDescription(
+          `Welcome <@${targetUser.id}>!\n\n` +
+          `This is your private verification ticket. A staff member will review your request.\n\n` +
+          `Staff can use the buttons below to **Ping Support**, **Verify User**, or **Close** the ticket.`
+        )
+        .setFooter({ text: `${guild.name} • Verification System` })
+        .setTimestamp();
+
+      // Create buttons
+      const verifyButton = new ButtonBuilder()
+        .setCustomId('verify-ticket-user')
+        .setLabel('Verify User')
+        .setStyle(ButtonStyle.Success);
+
+      const pingButton = new ButtonBuilder()
+        .setCustomId('ping-support')
+        .setLabel('Ping Support')
+        .setStyle(ButtonStyle.Primary);
+
+      const closeButton = new ButtonBuilder()
+        .setCustomId('close-ticket')
+        .setLabel('Close Ticket')
+        .setStyle(ButtonStyle.Danger);
+
+      const row = new ActionRowBuilder().addComponents(verifyButton, pingButton, closeButton);
+
+      // Send embed + buttons to channel
+      await channel.send({
+        content: `<@${targetUser.id}> A staff member will assist you shortly.`,
+        embeds: [embed],
+        components: [row],
+      });
+
+      console.log(`[TicketSystem] 🎟️ Created verification ticket for ${targetUser.tag} in guild ${guild.id}`);
+
+      return interaction.reply({
+        content: `Verification ticket created: <#${channel.id}>`,
+        flags: 64,
+      });
     } catch (error) {
-      console.error('[TicketSystem] Error creating verification ticket:', error);
+      console.error('[TicketSystem] ❌ Error creating verification ticket:', error);
       if (!interaction.replied) {
         await interaction.reply({
-          content: 'An error occurred while creating the verification ticket.',
+          content: 'An error occurred while creating the verification ticket. Please try again later.',
           flags: 64,
         });
       }

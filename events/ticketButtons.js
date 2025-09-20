@@ -1,22 +1,19 @@
 /**
  * File: events/ticketButtons.js
- * Purpose: Handles ticket-related button interactions (ping support, verify user, close ticket).
- * Notes:
- * - Resolves roles and channels dynamically from GuildConfig.
- * - Delegates transcript handling to githubGistUtils.
- * - Maintains professional error handling and logging standards.
+ * Purpose: Handles ticket-related button interactions (start verification, ping support, verify user, close ticket).
  */
 
-const { Events, PermissionsBitField, EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const { Events, EmbedBuilder } = require('discord.js');
 const Ticket = require('../schemas/ticket');
 const GuildConfig = require('../schemas/config');
 const uploadTranscript = require('../utils/githubGistUtils');
 const TicketTranscript = require('../schemas/ticketTranscript');
+const createVerificationTicket = require('../utils/createVerificationTicket');
 
 const cooldowns = new Map();
 
 module.exports = {
-  name: Events.InteractionCreate,
+  name: Events.InteractionCreate, // ✅ required for EventLoader
 
   async execute(interaction) {
     if (!interaction.isButton()) return;
@@ -24,12 +21,22 @@ module.exports = {
     try {
       const { customId, channel, guild, member } = interaction;
 
-      // Load guild configuration
       const guildConfig = await GuildConfig.findOne({ guildId: guild.id });
       if (!guildConfig) {
         return interaction.reply({
           content: 'Guild configuration not found. Please configure the ticket system using `/configure`.',
           flags: 64,
+        });
+      }
+
+      /**
+       * 🎟️ Start Verification
+       */
+      if (customId === 'startVerification') {
+        console.log(`[TicketSystem] 🎟️ User ${interaction.user.tag} clicked Start Verification in guild ${guild.id}`);
+        return createVerificationTicket.create({
+          interaction,
+          targetUser: interaction.user,
         });
       }
 
@@ -57,9 +64,9 @@ module.exports = {
       }
 
       /**
-       * ✅ Verify User
+       * ✅ Verify User (via ticket button)
        */
-      if (customId === 'verify-user') {
+      if (customId === 'verify-ticket-user') {
         if (!guildConfig.verificationRoleId) {
           return interaction.reply({
             content: 'Verification role not configured. Please set it using `/configure`.',
@@ -96,7 +103,7 @@ module.exports = {
           flags: 64,
         });
 
-        console.log(`[TicketSystem] ✅ Verified user ${ticketOwner.user.tag} in guild ${guild.id}`);
+        console.log(`[TicketSystem] ✅ Verified user ${ticketOwner.user.tag} via Verify Button in guild ${guild.id}`);
       }
 
       /**
@@ -115,16 +122,17 @@ module.exports = {
         // Fetch messages for transcript
         const messages = await fetchChannelMessages(channel);
 
-        // Upload transcript (to Gist or fallback)
         let transcriptUrl;
         try {
           transcriptUrl = await uploadTranscript(messages, channel, guildConfig);
+          if (transcriptUrl) {
+            console.log(`[TicketSystem] 📝 Transcript uploaded for ticket ${channel.id} → ${transcriptUrl}`);
+          }
         } catch (error) {
-          console.error('[TicketSystem] Failed to upload transcript:', error);
+          console.error('[TicketSystem] ❌ Failed to upload transcript:', error);
           transcriptUrl = null;
         }
 
-        // Save transcript record in DB
         await TicketTranscript.create({
           ticketId: ticket._id,
           gistUrl: transcriptUrl,
@@ -135,7 +143,6 @@ module.exports = {
           })),
         });
 
-        // Send transcript notification
         const embed = new EmbedBuilder()
           .setColor('Green')
           .setTitle('Ticket Closed')
@@ -162,7 +169,7 @@ module.exports = {
         console.log(`[TicketSystem] 📩 Closed ticket ${channel.id} in guild ${guild.id}`);
       }
     } catch (error) {
-      console.error('[TicketSystem] Error in ticketButtons handler:', error);
+      console.error('[TicketSystem] ❌ Error in ticketButtons handler:', error);
       if (!interaction.replied) {
         await interaction.reply({
           content: 'An error occurred while handling this ticket action.',
@@ -174,7 +181,7 @@ module.exports = {
 };
 
 /**
- * Fetch all messages from a channel for transcript purposes.
+ * Helper: fetch channel messages for transcript purposes.
  */
 async function fetchChannelMessages(channel) {
   let messages = [];

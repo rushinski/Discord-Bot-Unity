@@ -53,9 +53,9 @@ module.exports = {
         ephemeral: false,
       });
 
-      console.log(`[TicketSystem] 🎟️ Verification panel sent in guild ${interaction.guild.id}`);
+      console.log(`[TicketSystem] 🪪 Sent verification panel in guild ${interaction.guild.id}`);
     } catch (error) {
-      console.error('[TicketSystem] Error sending verification panel:', error);
+      console.error('[TicketSystem] ❌ Error sending verification panel:', error);
       if (!interaction.replied) {
         await interaction.reply({
           content: 'An error occurred while sending the verification panel. Please try again later.',

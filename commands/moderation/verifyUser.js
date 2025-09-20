@@ -3,11 +3,10 @@
  * Purpose: Moderation command to initiate the verification process for a user.
  * Notes:
  * - Creates a verification ticket for the specified user.
- * - Does not assign roles directly; staff handle verification inside the ticket.
+ * - Delegates ticket creation to createVerificationTicket.js for consistency.
  */
 
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
-const Ticket = require('../../schemas/ticket');
 const createVerificationTicket = require('../../utils/createVerificationTicket');
 
 module.exports = {
@@ -18,7 +17,8 @@ module.exports = {
     .addUserOption(option =>
       option.setName('user')
         .setDescription('The user to verify.')
-        .setRequired(true)),
+        .setRequired(true)
+    ),
 
   async execute(interaction) {
     try {
@@ -40,36 +40,17 @@ module.exports = {
         });
       }
 
-      // Check if user already has an open verification ticket
-      const existingTicket = await Ticket.findOne({
-        userId: user.id,
-        guildId: interaction.guild.id,
-        ticketType: 'verification',
-        status: 'open',
-      });
-
-      if (existingTicket) {
-        return interaction.reply({
-          content: `${user.tag} already has an open verification ticket.`,
-          flags: 64,
-        });
-      }
-
-      // Create verification ticket for user
+      // Use shared verification ticket creation flow
       await createVerificationTicket.create({
-        user: member.user,
-        guild: interaction.guild,
-        reply: (options) => interaction.reply(options), // emulate interaction API
+        interaction,
+        targetUser: member.user,
       });
 
-      await interaction.reply({
-        content: `A verification ticket has been created for ${user.tag}.`,
-        flags: 64,
-      });
+      console.log(`[TicketSystem] 🎟️ Staff-initiated verification for ${member.user.tag} in guild ${interaction.guild.id}`);
 
-      console.log(`[TicketSystem] 🎟️ Verification ticket created for ${user.tag} in guild ${interaction.guild.id}`);
+      // createVerificationTicket handles replies & logging internally
     } catch (error) {
-      console.error('[TicketSystem] Error executing verify-user command:', error);
+      console.error('[TicketSystem] ❌ Error executing verify-user command:', error);
       if (!interaction.replied) {
         await interaction.reply({
           content: 'An error occurred while initiating the verification process.',

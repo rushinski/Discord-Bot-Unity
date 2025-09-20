@@ -21,7 +21,6 @@ const guildConfigSchema = new Schema(
     utcDateChannel: { type: String, default: null },
 
     // Ticket System Roles
-    upperSupportRoleId: { type: String, default: null },
     generalSupportRoleId: { type: String, default: null },
     verificationRoleId: { type: String, default: null },
 

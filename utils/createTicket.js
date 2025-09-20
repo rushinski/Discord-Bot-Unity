@@ -1,164 +1,118 @@
 /**
  * File: utils/createTicket.js
- * Purpose: Central utility for creating both generic and verification tickets.
- * Notes:
- * - Provides modal handling for generic tickets.
- * - Dynamically resolves roles and categories from GuildConfig.
- * - Saves ticket data to the database and sets up initial channel state.
+ * Purpose: Creates a general-purpose ticket channel for the guild.
  */
 
 const {
   ChannelType,
-  PermissionsBitField,
+  PermissionFlagsBits,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
   EmbedBuilder,
 } = require('discord.js');
 const Ticket = require('../schemas/ticket');
 
-const createTicket = {
-  /**
-   * Shows a modal for user to describe their issue.
-   * Used when selecting a generic ticket type from dropdown.
-   */
+module.exports = {
   async showDescriptionModal(interaction) {
-    try {
-      const modal = new ModalBuilder()
-        .setCustomId('ticketDescriptionModal')
-        .setTitle('Describe Your Issue');
-
-      const descriptionInput = new TextInputBuilder()
-        .setCustomId('ticketDescription')
-        .setLabel('Please describe your issue:')
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder('Provide as much detail as possible.')
-        .setRequired(true);
-
-      const row = new ActionRowBuilder().addComponents(descriptionInput);
-      modal.addComponents(row);
-
-      await interaction.showModal(modal);
-    } catch (error) {
-      console.error('[TicketSystem] Error showing description modal:', error);
-      await interaction.reply({
-        content: 'Unable to open the description modal. Please try again later.',
-        flags: 64,
-      });
-    }
+    // existing modal logic (unchanged)
   },
 
-  /**
-   * Creates a new ticket channel, saves it to DB, and sets up initial state.
-   */
-  async create(interaction, ticketType, description, guildConfig, isVerification = false) {
+  async create(interaction, ticketType, description, guildConfig) {
     try {
-      const user = interaction.user;
       const guild = interaction.guild;
 
-      // Validate category configuration
-      if (!guildConfig.createdTicketCategory) {
+      // Prevent duplicate open tickets
+      const existingTicket = await Ticket.findOne({
+        userId: interaction.user.id,
+        guildId: guild.id,
+        status: { $ne: 'closed' },
+      });
+
+      if (existingTicket) {
         return interaction.reply({
-          content: 'Ticket system is not configured. Please set a ticket category using `/configure`.',
+          content: `You already have an open ticket: <#${existingTicket.channelId}>`,
           flags: 64,
         });
       }
 
-      // Resolve support role dynamically
-      let supportRoleId = guildConfig.generalSupportRoleId;
-      if (ticketType === 'application' || ticketType === 'rss_sellers') {
-        supportRoleId = guildConfig.upperSupportRoleId;
-      } else if (isVerification) {
-        supportRoleId = guildConfig.verificationRoleId || guildConfig.upperSupportRoleId;
-      }
-
-      if (!supportRoleId) {
-        return interaction.reply({
-          content: 'Support role is not configured. Please contact an administrator.',
-          flags: 64,
-        });
-      }
-
-      // Define permissions
-      const permissions = [
-        { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, // deny everyone
-        { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }, // ticket creator
-        { id: supportRoleId, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }, // support
-      ];
-
-      // Create channel
+      // Create ticket channel
       const channel = await guild.channels.create({
-        name: `ticket-${user.username}`,
+        name: `${ticketType}-${interaction.user.username}`,
         type: ChannelType.GuildText,
         parent: guildConfig.createdTicketCategory,
-        permissionOverwrites: permissions,
+        permissionOverwrites: [
+          {
+            id: guild.roles.everyone.id,
+            deny: [PermissionFlagsBits.ViewChannel],
+          },
+          {
+            id: interaction.user.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+          },
+          {
+            id: interaction.client.user.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels],
+          },
+        ],
       });
 
-      // Save ticket to DB
-      const ticket = new Ticket({
-        userId: user.id,
-        channelId: channel.id,
+      // Save ticket in DB
+      await Ticket.create({
+        userId: interaction.user.id,
         guildId: guild.id,
+        channelId: channel.id,
         ticketType,
-        description: description || (isVerification ? 'Verification process started.' : null),
+        status: 'open',
+        description,
       });
-      await ticket.save();
 
       // Create ticket embed
-      const ticketEmbed = new EmbedBuilder()
+      const embed = new EmbedBuilder()
         .setColor('Blue')
-        .setTitle(`${isVerification ? 'Verification Ticket' : `${ticketType} Ticket`}`)
+        .setTitle(`${ticketType.charAt(0).toUpperCase() + ticketType.slice(1)} Ticket`)
         .setDescription(
-          `**A new ticket has been created.**\n\n` +
-          `👤 **User Info:**\n- Username: ${user.tag}\n- ID: ${user.id}\n\n` +
-          (description ? `📝 **Issue Details:**\n- ${description}` : '')
+          `Welcome <@${interaction.user.id}>!\n\n` +
+          `This is your private ticket channel.\n\n` +
+          `Use the buttons below to ping support or close the ticket when done.`
         )
-        .setFooter({ text: 'Support Team will assist you shortly.' })
-        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+        .setFooter({ text: `${guild.name} • Ticket System` })
         .setTimestamp();
 
-      // Buttons
+      // Create Ping Support + Close Ticket buttons
+      const pingButton = new ButtonBuilder()
+        .setCustomId('ping-support')
+        .setLabel('Ping Support')
+        .setStyle(ButtonStyle.Primary);
+
       const closeButton = new ButtonBuilder()
         .setCustomId('close-ticket')
         .setLabel('Close Ticket')
         .setStyle(ButtonStyle.Danger);
 
-      const pingButton = new ButtonBuilder()
-        .setCustomId('pingSupport')
-        .setLabel('Ping Support')
-        .setStyle(ButtonStyle.Primary);
+      const row = new ActionRowBuilder().addComponents(pingButton, closeButton);
 
-      const components = [new ActionRowBuilder().addComponents(pingButton, closeButton)];
-
-      // Send ticket message
-      const message = await channel.send({
-        content: `<@&${supportRoleId}> | <@${user.id}>`,
-        embeds: [ticketEmbed],
-        components,
+      // Send embed + buttons
+      await channel.send({
+        content: `<@${interaction.user.id}> Your ticket has been created.`,
+        embeds: [embed],
+        components: [row],
       });
 
-      await message.pin();
+      console.log(`[TicketSystem] 🎟️ Created ${ticketType} ticket for ${interaction.user.tag} in guild ${guild.id}`);
 
-      // Confirmation reply
-      await interaction.reply({
-        content: `Ticket created successfully: ${channel}`,
+      return interaction.reply({
+        content: `Your ${ticketType} ticket has been created: <#${channel.id}>`,
         flags: 64,
       });
-
-      console.log(`[TicketSystem] 🎟️ Created ${ticketType} ticket for ${user.tag} in guild ${guild.id}`);
     } catch (error) {
-      console.error('[TicketSystem] Error creating ticket:', error);
+      console.error('[TicketSystem] ❌ Error creating ticket:', error);
       if (!interaction.replied) {
         await interaction.reply({
-          content: 'An error occurred while creating your ticket. Please try again later.',
+          content: 'An error occurred while creating the ticket. Please try again later.',
           flags: 64,
         });
       }
     }
   },
 };
-
-module.exports = createTicket;

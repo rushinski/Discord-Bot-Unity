@@ -5,7 +5,6 @@
  * Supported configuration fields:
  * - created-ticket-category: Category where new tickets are created
  * - support-role: General support staff role
- * - upper-support-role: Escalated support staff role
  * - verification-role: Role assigned after verification
  * - ticket-transcripts: Text channel where transcripts are stored
  * - ticket-type: Manage structured ticket types (add, remove, list)
@@ -34,7 +33,6 @@ module.exports = {
         .addChoices(
           { name: 'Created Ticket Category (Category)', value: 'created-ticket-category' },
           { name: 'Support Role (Role)', value: 'support-role' },
-          { name: 'Upper Support Role (Role)', value: 'upper-support-role' },
           { name: 'Verification Role (Role)', value: 'verification-role' },
           { name: 'Ticket Transcripts (Text Channel)', value: 'ticket-transcripts' },
           { name: 'Ticket Types (Manage)', value: 'ticket-type' },
@@ -93,17 +91,6 @@ module.exports = {
             });
           }
           guildConfig.generalSupportRoleId = value;
-          break;
-        }
-
-        case 'upper-support-role': {
-          if (!interaction.guild.roles.cache.has(value)) {
-            return interaction.reply({
-              content: 'Please provide a valid role ID for the upper support role.',
-              flags: 64,
-            });
-          }
-          guildConfig.upperSupportRoleId = value;
           break;
         }
 

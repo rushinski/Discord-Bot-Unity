@@ -1,13 +1,9 @@
 /**
  * File: events/ticketSystemHandler.js
- * Purpose: Handles ticket creation and support pings for the ticket system.
- * Notes:
- * - Uses GuildConfig for support roles and ticket category configuration.
- * - Delegates actual ticket channel creation to a shared utility.
- * - Enforces cooldowns on support pings to prevent spam.
+ * Purpose: Handles dropdown selections, modal submissions, and pingSupport button interactions.
  */
 
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, Events } = require('discord.js');
+const { Events } = require('discord.js');
 const GuildConfig = require('../schemas/config');
 const Ticket = require('../schemas/ticket');
 const createTicket = require('../utils/createTicket');
@@ -15,23 +11,20 @@ const createTicket = require('../utils/createTicket');
 const pingCooldown = new Map();
 
 module.exports = {
-  name: Events.InteractionCreate,
+  name: Events.InteractionCreate, // ✅ required for EventLoader
 
   async execute(interaction) {
     try {
       /**
-       * Handle dropdown selection → launches modal
+       * Handle dropdown selection → show modal
        */
       if (interaction.isStringSelectMenu() && interaction.customId === 'ticketType') {
-        // Store selected type in interaction state
         interaction.client.userSelectedTicketType = interaction.values[0];
-
-        // Delegate modal handling (kept in createTicket util)
         return await createTicket.showDescriptionModal(interaction);
       }
 
       /**
-       * Handle modal submission → creates ticket
+       * Handle modal submission → create ticket
        */
       if (interaction.isModalSubmit() && interaction.customId === 'ticketDescriptionModal') {
         const ticketType = interaction.client.userSelectedTicketType;
@@ -45,7 +38,6 @@ module.exports = {
           });
         }
 
-        // Ensure user does not already have an open ticket
         const existingTicket = await Ticket.findOne({
           userId: interaction.user.id,
           guildId: interaction.guild.id,
@@ -58,7 +50,6 @@ module.exports = {
           });
         }
 
-        // Create the ticket via shared utility
         return await createTicket.create(interaction, ticketType, description, guildConfig);
       }
 
@@ -89,7 +80,7 @@ module.exports = {
 
         pingCooldown.set(interaction.channel.id, now);
 
-        // Resolve support role dynamically
+        const guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
         const supportRoleId =
           ticketData.ticketType === 'application' || ticketData.ticketType === 'rss_sellers'
             ? guildConfig.upperSupportRoleId
@@ -104,9 +95,11 @@ module.exports = {
 
         await interaction.reply({ content: 'Support team has been notified.', flags: 64 });
         await interaction.channel.send({ content: `<@&${supportRoleId}>` });
+
+        console.log(`[TicketSystem] 🔔 Support pinged in ticket ${interaction.channel.id}`);
       }
     } catch (error) {
-      console.error('[TicketSystem] Error in ticket system handler:', error);
+      console.error('[TicketSystem] ❌ Error in ticketSystemHandler:', error);
       if (!interaction.replied) {
         await interaction.reply({
           content: 'An error occurred while processing your request. Please try again later.',
