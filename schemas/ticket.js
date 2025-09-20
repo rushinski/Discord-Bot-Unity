@@ -1,39 +1,39 @@
 /**
  * File: schemas/ticket.js
- * Purpose: Defines the schema for storing individual support or verification tickets.
+ * Purpose: Defines the schema for storing individual support and verification tickets.
  *
  * Responsibilities:
- * - Store references to the user, channel, and guild associated with a ticket.
- * - Track the type of ticket (e.g., verification, complaints, general support).
- * - Maintain the lifecycle state of the ticket (open, closed, pending).
- * - Provide indexes for efficient lookups when querying by user, guild, or status.
+ * - Store references to the user, channel, and guild associated with each ticket.
+ * - Track ticket type (e.g., verification, complaints, general support).
+ * - Manage ticket lifecycle status (open, closed, pending).
+ * - Provide indexes for efficient lookups across users, guilds, and statuses.
  *
  * Notes for Recruiters:
- * This schema represents a single ticket created by a user.
- * Tickets can be general support requests or specialized types like verification.
- * Each ticket corresponds to a dedicated private channel in the guild.
+ * Each ticket corresponds to a private support channel within the guild.
+ * This schema ensures tickets are tracked consistently, supporting
+ * moderation workflows and user support processes.
  */
 
-const { Schema, model } = require('mongoose');
+const { Schema, model, models } = require('mongoose');
 
 const ticketSchema = new Schema(
   {
     userId: { type: String, required: true, index: true }, // Discord user ID of the ticket creator
-    channelId: { type: String, required: true, unique: true }, // Discord channel ID of the ticket channel
-    guildId: { type: String, required: true, index: true }, // Discord guild ID where the ticket was created
-    ticketType: { type: String, required: true }, // Ticket type (e.g., "verification", "complaints", "support")
-    description: { type: String, default: null }, // Optional description provided by the user during ticket creation
+    channelId: { type: String, required: true, unique: true }, // Dedicated channel ID for the ticket
+    guildId: { type: String, required: true, index: true }, // Discord guild ID where the ticket belongs
+    ticketType: { type: String, required: true }, // Ticket category (e.g., "verification", "support")
+    description: { type: String, default: null }, // Optional user-provided description
 
-    // Current status of the ticket lifecycle
     status: {
       type: String,
       enum: ['open', 'closed', 'pending'],
       default: 'open',
-    },
+    }, // Current lifecycle state of the ticket
   },
-  { timestamps: true }
+  { timestamps: true, collection: 'tickets' }
 );
 
-ticketSchema.index({ userId: 1, guildId: 1, status: 1 }); // Compound index for efficient lookups by user, guild, and status
+// Compound index for fast queries across user, guild, and status
+ticketSchema.index({ userId: 1, guildId: 1, status: 1 });
 
-module.exports = model('Ticket', ticketSchema);
+module.exports = models.Ticket || model('Ticket', ticketSchema);

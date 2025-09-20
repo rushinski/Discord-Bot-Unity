@@ -1,40 +1,37 @@
 /**
  * File: schemas/ticketTranscript.js
- * Purpose: Defines the schema for storing ticket transcripts.
+ * Purpose: Defines the schema for storing archived transcripts of closed tickets.
  *
  * Responsibilities:
- * - Store the transcript of conversations from a closed ticket.
- * - Reference the related ticket in the database.
- * - Store either a GitHub Gist URL (preferred) or inline message data as fallback.
- * - Preserve accountability and allow staff to review past tickets.
+ * - Persist transcripts of ticket conversations for record-keeping.
+ * - Reference the related ticket document in the database.
+ * - Store transcripts as GitHub Gist links when possible, or inline message data as a fallback.
+ * - Enable staff to review historical tickets for accountability.
  *
  * Notes for Recruiters:
- * This schema represents the archived record of a ticket.
- * Whenever a ticket is closed, its messages are collected and stored.
- * If possible, transcripts are uploaded to GitHub Gist for easy retrieval.
- * If the upload fails, messages are stored inline in the database.
+ * This schema ensures closed tickets are archived in a reviewable format.
+ * If an external transcript upload (e.g., GitHub Gist) is successful,
+ * the transcript is stored as a link. If not, messages are stored
+ * inline to guarantee records are never lost.
  */
 
-const { Schema, model } = require('mongoose');
+const { Schema, model, models } = require('mongoose');
 
 const ticketTranscriptSchema = new Schema(
   {
-    ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', required: true }, // Reference to the related Ticket document
-    gistUrl: { type: String, default: null }, // URL of the GitHub Gist where the transcript was uploaded
+    ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', required: true }, // Reference to related Ticket
+    gistUrl: { type: String, default: null }, // External transcript link (preferred)
 
-    // Inline fallback storage if Gist upload fails
-    messages: {
-      type: [
-        {
-          author: { type: String, required: true }, // User tag
-          content: { type: String, required: true }, // Message content
-          timestamp: { type: Date, required: true }, // When the message was sent
-        },
-      ],
-      default: [],
-    },
+    messages: [
+      {
+        author: { type: String, required: true }, // User who sent the message
+        content: { type: String, required: true }, // Message content
+        timestamp: { type: Date, required: true }, // When the message was sent
+      },
+    ], // Inline fallback transcript storage
   },
-  { timestamps: true }
+  { timestamps: true, collection: 'ticketTranscripts' }
 );
 
-module.exports = model('TicketTranscript', ticketTranscriptSchema);
+module.exports =
+  models.TicketTranscript || model('TicketTranscript', ticketTranscriptSchema);

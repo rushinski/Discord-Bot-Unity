@@ -1,66 +1,33 @@
 /**
- * RoleCountConfig Schema
- * ----------------------
- * Stores configuration for role-based count trackers.
- * Each entry maps a guild/role to a voice channel that
- * dynamically updates its name with the number of users.
+ * File: schemas/RoleCountConfig.js
+ * Purpose: Defines the schema for tracking live role-based member counts in voice channels.
  *
- * Example:
- * {
- *   guildId: "1234567890",
- *   roleId: "9876543210",
- *   channelId: "2468135790",
- *   label: "Whales",
- *   emoji: "🐳"
- * }
+ * Responsibilities:
+ * - Map a guild role to a designated voice channel.
+ * - Automatically update the channel name to reflect the number of members with the role.
+ * - Support optional labeling and emoji prefixes for clear presentation.
+ *
+ * Notes for Recruiters:
+ * This schema supports the "role count tracker" feature, which is a dynamic display of
+ * how many members hold a specific role. For example, a channel named "🐳 Whales: 25"
+ * automatically updates when members gain or lose the role.
  */
 
-const mongoose = require('mongoose');
+const { Schema, model, models } = require('mongoose');
 
-const RoleCountConfigSchema = new mongoose.Schema(
+const roleCountConfigSchema = new Schema(
   {
-    guildId: {
-      type: String,
-      required: true,
-      trim: true,
-      index: true,
-      description: 'Guild/server ID',
-    },
-    roleId: {
-      type: String,
-      required: true,
-      trim: true,
-      description: 'Target role ID to count members of',
-    },
-    channelId: {
-      type: String,
-      required: true,
-      trim: true,
-      description: 'Voice channel ID where the role count is displayed',
-    },
-    label: {
-      type: String,
-      required: true,
-      trim: true,
-      description: 'Label used in the channel name (e.g., "Whales")',
-    },
-    emoji: {
-      type: String,
-      required: false,
-      default: '',
-      trim: true,
-      description: 'Optional emoji prefix for the channel name',
-    },
+    guildId: { type: String, required: true, index: true }, // Discord guild ID
+    roleId: { type: String, required: true }, // Role being tracked
+    channelId: { type: String, required: true }, // Voice channel where the count is displayed
+    label: { type: String, required: true }, // Label shown in the channel name (e.g., "Whales")
+    emoji: { type: String, default: '' }, // Optional emoji prefix (e.g., 🐳)
   },
-  {
-    timestamps: true,
-    collection: 'roleCountConfigs',
-  }
+  { timestamps: true, collection: 'roleCountConfigs' }
 );
 
-// Ensure uniqueness of role trackers per guild
-RoleCountConfigSchema.index({ guildId: 1, roleId: 1 }, { unique: true });
+// Ensure each role in a guild can only be tracked once
+roleCountConfigSchema.index({ guildId: 1, roleId: 1 }, { unique: true });
 
 module.exports =
-  mongoose.models.RoleCountConfig ||
-  mongoose.model('RoleCountConfig', RoleCountConfigSchema);
+  models.RoleCountConfig || model('RoleCountConfig', roleCountConfigSchema);

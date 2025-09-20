@@ -1,25 +1,28 @@
 /**
- * Schema: User
- * Purpose: Define user-level persistence for the leveling system.
+ * File: schemas/userSchema.js
+ * Purpose: Defines the schema for persisting user activity and progression in the leveling system.
  *
- * Fields:
- * - userId: Discord user identifier (unique).
- * - messages: Total number of messages sent by the user in tracked guilds.
- * - level: The user's current assigned level (string label).
- * - notificationsEnabled: Whether the user receives direct notifications for level changes.
+ * Responsibilities:
+ * - Track the total number of messages sent by each user.
+ * - Store the user's current level designation.
+ * - Control whether users receive direct notifications on level changes.
  *
  * Notes for Recruiters:
- * This schema underpins the leveling system by persisting user activity and progression.
- * It ensures that message counts and level states are stored consistently across sessions.
+ * This schema underpins the leveling feature by recording user activity
+ * across sessions. It ensures consistent storage of progression data,
+ * allowing fair and persistent recognition of engagement.
  */
 
-const mongoose = require('mongoose');
+const { Schema, model, models } = require('mongoose');
 
-const userSchema = new mongoose.Schema({
-  userId: { type: String, required: true, unique: true },
-  messages: { type: Number, default: 0 },
-  level: { type: String, default: 'Newcomer' }, // Neutral professional default
-  notificationsEnabled: { type: Boolean, default: true },
-});
+const userSchema = new Schema(
+  {
+    userId: { type: String, required: true, unique: true }, // Discord user ID
+    messages: { type: Number, default: 0 }, // Count of tracked messages
+    level: { type: String, default: 'Newcomer' }, // User's current level label
+    notificationsEnabled: { type: Boolean, default: true }, // Whether to notify user on level changes
+  },
+  { timestamps: true, collection: 'users' }
+);
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = models.User || model('User', userSchema);

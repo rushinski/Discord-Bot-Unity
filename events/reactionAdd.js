@@ -1,9 +1,21 @@
 /**
  * Event: MessageReactionAdd
- * -------------------------
- * Handles reaction-role assignments.
- * Dynamically resolves role configs from the database
- * and applies the corresponding role to the reacting user.
+ *
+ * Purpose:
+ * Assigns roles to members when they react to a configured role
+ * selection message. Each reaction corresponds to a specific role.
+ *
+ * Responsibilities:
+ * - Resolve the correct role configuration for the reacted message.
+ * - Match the emoji reaction to the configured role mapping.
+ * - Assign the role to the reacting member if it exists in the guild.
+ * - Handle errors gracefully without disrupting bot operation.
+ *
+ * Recruiter Notes:
+ * This event demonstrates how interactive role assignment can be
+ * implemented in a controlled and auditable way. Roles are linked
+ * to emoji reactions, configuration is database-driven, and logging
+ * provides clear traceability if a failure occurs.
  */
 
 const { Events } = require('discord.js');
@@ -12,6 +24,11 @@ const RoleReactionMessage = require('../schemas/roleReactionMessage');
 module.exports = {
   name: Events.MessageReactionAdd,
 
+  /**
+   * Execute the role assignment on reaction add.
+   * @param {object} reaction - The Discord reaction object.
+   * @param {object} user - The user who added the reaction.
+   */
   async execute(reaction, user) {
     if (user.bot) return;
 
@@ -20,11 +37,11 @@ module.exports = {
     try {
       const member = await message.guild.members.fetch(user.id);
 
-      // Fetch configuration from DB
+      // Load role configuration for this message
       const config = await RoleReactionMessage.findOne({ messageId: message.id });
       if (!config) return;
 
-      // 🎭 Find role by emoji mapping
+      // Match emoji to configured role
       const roleConfig = config.roles.find(r => r.emoji === emoji.name);
       if (!roleConfig) return;
 
@@ -34,24 +51,11 @@ module.exports = {
         return;
       }
 
+      // Assign role to the member
       await member.roles.add(role);
-
-      // 🎉 Ephemeral-style confirmation
-      await message.channel.send({
-        content: `${user}, you've been assigned **${role.name}**.`,
-        flags: 64, // ephemeral flag
-      });
+      console.log(`[RoleSystem] Assigned role "${role.name}" to user ${user.tag} in guild ${message.guild.id}.`);
     } catch (error) {
-      console.error(`[RoleSystem] Error in reactionAdd handler for guild ${message.guild?.id}:`, error);
-
-      try {
-        await message.channel.send({
-          content: `⚠️ Sorry ${user}, something went wrong while assigning your role.`,
-          flags: 64, // ephemeral flag
-        });
-      } catch (sendError) {
-        console.error('[RoleSystem] Failed to send error message:', sendError);
-      }
+      console.error(`[RoleSystem] Error in MessageReactionAdd handler for guild ${message.guild?.id}:`, error);
     }
   },
 };

@@ -1,32 +1,31 @@
 /**
- * Schema: Infractions
- * Purpose: Track warnings and strikes issued to users for moderation purposes.
+ * File: schemas/infractions.js
+ * Purpose: Defines the schema for tracking moderation infractions against guild members.
  *
- * Fields:
- * - guildId: Discord guild (server) identifier.
- * - userId: Discord user identifier for the member receiving infractions.
- * - warnings: Count of warnings (2 warnings escalate into 1 strike).
- * - strikes: Count of strikes (3 strikes escalate into a ban).
+ * Responsibilities:
+ * - Store warnings and strikes issued to users for rule violations.
+ * - Enforce escalation policies (e.g., warnings → strikes, strikes → bans).
+ * - Ensure infractions are tied uniquely to each user within a guild.
  *
  * Notes for Recruiters:
- * This schema supports moderation by persisting violations and enabling
- * escalation rules. The design ensures that discipline is consistent
- * across sessions and unique per user per guild.
+ * This schema provides persistence for moderation actions,
+ * ensuring consistency across sessions. It helps enforce
+ * disciplinary rules fairly, with structured escalation.
  */
 
-const mongoose = require('mongoose');
+const { Schema, model, models } = require('mongoose');
 
-const infractionsSchema = new mongoose.Schema(
+const infractionsSchema = new Schema(
   {
-    guildId: { type: String, required: true, trim: true, index: true },
-    userId: { type: String, required: true, trim: true, index: true },
-    warnings: { type: Number, default: 0, min: 0 },
-    strikes: { type: Number, default: 0, min: 0 },
+    guildId: { type: String, required: true, index: true }, // Discord guild ID
+    userId: { type: String, required: true, index: true }, // Discord user ID
+    warnings: { type: Number, default: 0, min: 0 }, // Count of warnings (e.g., 2 warnings escalate into 1 strike)
+    strikes: { type: Number, default: 0, min: 0 }, // Count of strikes (e.g., 3 strikes escalate into a ban)
   },
   { timestamps: true, collection: 'infractions' }
 );
 
-// Ensure uniqueness per guild-user pair.
+// Ensure each user has only one infraction record per guild
 infractionsSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
-module.exports = mongoose.model('Infractions', infractionsSchema);
+module.exports = models.Infractions || model('Infractions', infractionsSchema);

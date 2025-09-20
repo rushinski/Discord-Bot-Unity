@@ -1,9 +1,22 @@
 /**
  * Event: MessageReactionRemove
- * ----------------------------
- * Handles reaction-role removals.
- * Dynamically resolves role configs from the database
- * and removes the corresponding role from the user.
+ *
+ * Purpose:
+ * Removes roles from members when they remove their reaction from a
+ * configured role selection message. Each reaction corresponds to a
+ * specific role, which is revoked if the reaction is withdrawn.
+ *
+ * Responsibilities:
+ * - Resolve the correct role configuration for the reacted message.
+ * - Match the removed emoji reaction to the configured role mapping.
+ * - Remove the role from the member if it exists in the guild.
+ * - Handle errors gracefully without interrupting bot operation.
+ *
+ * Recruiter Notes:
+ * This event demonstrates how role management can be symmetrically
+ * tied to user interaction. Members can both opt in and opt out of
+ * roles, and the system ensures changes are applied consistently with
+ * clear error handling and structured logging.
  */
 
 const { Events } = require('discord.js');
@@ -12,6 +25,11 @@ const RoleReactionMessage = require('../schemas/roleReactionMessage');
 module.exports = {
   name: Events.MessageReactionRemove,
 
+  /**
+   * Execute the role removal on reaction remove.
+   * @param {object} reaction - The Discord reaction object.
+   * @param {object} user - The user who removed the reaction.
+   */
   async execute(reaction, user) {
     if (user.bot) return;
 
@@ -20,11 +38,11 @@ module.exports = {
     try {
       const member = await message.guild.members.fetch(user.id);
 
-      // 🔍 Fetch configuration from DB
+      // Load role configuration for this message
       const config = await RoleReactionMessage.findOne({ messageId: message.id });
       if (!config) return;
 
-      // 🎭 Find role by emoji mapping
+      // Match emoji to configured role
       const roleConfig = config.roles.find(r => r.emoji === emoji.name);
       if (!roleConfig) return;
 
@@ -34,24 +52,11 @@ module.exports = {
         return;
       }
 
+      // Remove role from the member
       await member.roles.remove(role);
-
-      // 🎉 Ephemeral-style confirmation
-      await message.channel.send({
-        content: `${user}, **${role.name}** has been removed.`,
-        flags: 64, // ephemeral flag
-      });
+      console.log(`[RoleSystem] Removed role "${role.name}" from user ${user.tag} in guild ${message.guild.id}.`);
     } catch (error) {
-      console.error(`[RoleSystem] Error in reactionRemove handler for guild ${message.guild?.id}:`, error);
-
-      try {
-        await message.channel.send({
-          content: `⚠️ Sorry ${user}, something went wrong while removing your role.`,
-          flags: 64, // ephemeral flag
-        });
-      } catch (sendError) {
-        console.error('[RoleSystem] Failed to send error message:', sendError);
-      }
+      console.error(`[RoleSystem] Error in MessageReactionRemove handler for guild ${message.guild?.id}:`, error);
     }
   },
 };

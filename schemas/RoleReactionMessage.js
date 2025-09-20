@@ -1,81 +1,39 @@
 /**
- * RoleReactionMessage Schema
- * --------------------------
- * Stores configuration for reaction-role messages.
- * Each record links a guild/channel/message to a category type
- * and its associated role-emoji mappings.
+ * File: schemas/RoleReactionMessage.js
+ * Purpose: Defines the schema for role selection messages using reaction emojis.
  *
- * Example:
- * {
- *   messageType: "continent",
- *   roles: [{ emoji: "🦁", roleName: "Africa" }],
- *   description: "Select your continent"
- * }
+ * Responsibilities:
+ * - Map a role selection message to its guild and channel.
+ * - Define a category type for the message (e.g., troop type, continent, spender).
+ * - Store role-emoji associations for interactive role assignment.
+ *
+ * Notes for Recruiters:
+ * This schema powers "reaction role" systems, where users can select roles
+ * by clicking on emojis in a designated message embed. It ensures that role
+ * categories are clearly defined and prevents duplicate setups per guild.
  */
 
-const mongoose = require('mongoose');
+const { Schema, model, models } = require('mongoose');
 
-const RoleReactionMessageSchema = new mongoose.Schema(
+const roleReactionMessageSchema = new Schema(
   {
-    messageId: {
-      type: String,
-      required: false,
-      default: null,
-      index: true,
-      trim: true,
-      description: 'Message ID of the role selection embed',
-    },
-    messageType: {
-      type: String,
-      required: true,
-      trim: true,
-      description: 'Category type (e.g., troop, spender, gender, etc.)',
-    },
-    channelId: {
-      type: String,
-      required: false,
-      default: null,
-      trim: true,
-      description: 'Channel ID where the role selection message is posted',
-    },
-    guildId: {
-      type: String,
-      required: true,
-      trim: true,
-      description: 'Guild/server ID',
-    },
+    messageId: { type: String, default: null, index: true }, // Discord message ID of the embed
+    messageType: { type: String, required: true }, // Category type (e.g., "continent", "troop", "spender")
+    channelId: { type: String, default: null }, // Channel where the message is posted
+    guildId: { type: String, required: true }, // Discord guild ID
     roles: [
       {
-        emoji: {
-          type: String,
-          required: true,
-          trim: true,
-          description: 'Emoji tied to the role (e.g., 🦁)',
-        },
-        roleName: {
-          type: String,
-          required: true,
-          trim: true,
-          description: 'Display name of the role (e.g., Africa)',
-        },
+        emoji: { type: String, required: true }, // Emoji symbol for role selection (e.g., 🦁)
+        roleName: { type: String, required: true }, // Human-readable role name (e.g., "Africa")
       },
     ],
-    description: {
-      type: String,
-      required: true,
-      trim: true,
-      description: 'Description shown in the embed for this role category',
-    },
+    description: { type: String, required: true }, // Text shown in the embed describing this category
   },
-  {
-    timestamps: true,
-    collection: 'roleReactionMessages',
-  }
+  { timestamps: true, collection: 'roleReactionMessages' }
 );
 
-// Prevent duplicate category configs in the same guild
-RoleReactionMessageSchema.index({ guildId: 1, messageType: 1 }, { unique: true });
+// Ensure each guild has unique category types
+roleReactionMessageSchema.index({ guildId: 1, messageType: 1 }, { unique: true });
 
 module.exports =
-  mongoose.models.RoleReactionMessage ||
-  mongoose.model('RoleReactionMessage', RoleReactionMessageSchema);
+  models.RoleReactionMessage || model('RoleReactionMessage', roleReactionMessageSchema);
