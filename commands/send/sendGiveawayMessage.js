@@ -1,24 +1,17 @@
 /**
- * Slash Command: /send-giveaway-message
- * ----------------------------------------
- * Starts a giveaway in the current channel.
+ * File: commands/send/sendGiveawayMessage.js
+ * Purpose: Implements the /send-giveaway-message command to start a timed giveaway in a channel.
  *
- * Options:
- * - title: Title of the giveaway (string)
- * - duration: Duration (e.g., 1s, 1m, 2h, 3d)
- * - prize: Prize description (string)
- * - winners: Number of winners (integer)
+ * Responsibilities:
+ * - Accept command input for title, duration, prize, and number of winners.
+ * - Validate input and post a giveaway embed with participation instructions.
+ * - Persist giveaway data in MongoDB for tracking.
+ * - Automatically end the giveaway after the specified duration and announce winners.
  *
- * Behavior:
- * - Posts an embed with giveaway details.
- * - Reacts with 🎉 for participants to enter.
- * - Saves giveaway data to MongoDB (schema: Giveaway).
- * - Ends automatically after specified duration and announces winners.
- *
- * Notes:
- * - Duration must match pattern: [number][s|m|h|d]
- * - Ephemeral responses use flags: 64
- * - Includes professional-grade error handling.
+ * Notes for Recruiters:
+ * This command demonstrates how timed events are managed within the bot.
+ * It validates user input, stores state in the database, and ensures
+ * participants are selected fairly at the end of the giveaway.
  */
 
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
@@ -33,22 +26,22 @@ module.exports = {
     .addStringOption(option =>
       option.setName('title')
         .setDescription('Title of the giveaway')
-        .setRequired(true),
+        .setRequired(true)
     )
     .addStringOption(option =>
       option.setName('duration')
-        .setDescription('Duration of the giveaway (e.g., 1s, 1m, 2h, 3d)')
-        .setRequired(true),
+        .setDescription('Duration (e.g., 1s, 1m, 2h, 3d)')
+        .setRequired(true)
     )
     .addStringOption(option =>
       option.setName('prize')
         .setDescription('The prize for the giveaway')
-        .setRequired(true),
+        .setRequired(true)
     )
     .addIntegerOption(option =>
       option.setName('winners')
         .setDescription('Number of winners')
-        .setRequired(true),
+        .setRequired(true)
     ),
 
   async execute(interaction) {
@@ -61,7 +54,7 @@ module.exports = {
       // Validate duration format
       if (!/^\d+[smhd]$/.test(duration)) {
         return interaction.reply({
-          content: '⚠️ Invalid duration format. Use s (seconds), m (minutes), h (hours), or d (days).',
+          content: 'Invalid duration format. Use s (seconds), m (minutes), h (hours), or d (days).',
           flags: 64, // ephemeral
         });
       }
@@ -72,21 +65,21 @@ module.exports = {
 
       // Giveaway embed
       const giveawayEmbed = new EmbedBuilder()
-        .setTitle(`${title} 🎉`)
+        .setTitle(`${title}`)
         .setDescription(
           `Prize: **${prize}**\n` +
           `Number of winners: **${winnersCount}**\n` +
-          `Ends at: **${endTimeUTC}** (UTC)`,
+          `Ends at: **${endTimeUTC}** (UTC)`
         )
         .setColor('Green')
         .setFooter({ text: 'Good luck to all participants!' })
         .setTimestamp();
 
-      // Send giveaway message
+      // Post giveaway
       const giveawayMessage = await giveawayChannel.send({ embeds: [giveawayEmbed] });
       await giveawayMessage.react('🎉');
 
-      // Persist giveaway in MongoDB
+      // Persist giveaway
       const giveawayData = new Giveaway({
         title,
         prize,
@@ -99,11 +92,11 @@ module.exports = {
       await giveawayData.save();
 
       await interaction.reply({
-        content: '✅ The giveaway has been started!',
+        content: 'The giveaway has been started.',
         flags: 64, // ephemeral
       });
 
-      // Schedule giveaway end
+      // Schedule ending
       setTimeout(async () => {
         try {
           const updatedData = await Giveaway.findOne({ messageId: giveawayMessage.id });
@@ -111,29 +104,30 @@ module.exports = {
 
           const users = await giveawayMessage.reactions.cache.get('🎉').users.fetch();
           users.delete(giveawayMessage.author.id); // Exclude bot
+
           const winners = users.random(winnersCount);
           const winnersMention = winners?.map(user => `<@${user.id}>`).join(', ') || 'No winners';
 
           const endEmbed = new EmbedBuilder()
-            .setTitle(`${title} Ended!`)
-            .setDescription(`The giveaway for **${prize}** has ended!\nWinners: ${winnersMention}`)
+            .setTitle(`${title} Ended`)
+            .setDescription(`The giveaway for **${prize}** has ended.\nWinners: ${winnersMention}`)
             .setColor('Red')
             .setFooter({ text: 'Thanks for participating!' })
             .setTimestamp();
 
           await giveawayChannel.send({ embeds: [endEmbed] });
 
-          // Cleanup DB
+          // Remove entry from DB
           await Giveaway.deleteOne({ messageId: giveawayMessage.id });
         } catch (error) {
-          console.error('Error ending giveaway:', error);
+          console.error('[GiveawayEnd] Error ending giveaway:', error);
         }
       }, ms(duration));
 
     } catch (error) {
-      console.error('Error executing /send-giveaway-message:', error);
+      console.error('[SendGiveawayMessage] Execution error:', error);
       return interaction.reply({
-        content: '❌ An error occurred while starting the giveaway. Please try again.',
+        content: 'An error occurred while starting the giveaway. Please try again.',
         flags: 64, // ephemeral
       });
     }

@@ -1,26 +1,16 @@
 /**
- * Slash Command: /send-rules
- * ----------------------------------------
- * Sends an embed containing server rules provided by the admin.
+ * File: commands/send/sendRules.js
+ * Purpose: Implements the /send-rules command to post server rules in a structured embed.
  *
- * Behavior:
- * - Accepts a single string where rules are separated by the "|" character.
- * - Automatically numbers rules for consistency.
- * - Posts rules as an embed in the current channel.
+ * Responsibilities:
+ * - Accept a string input of rules separated by the "|" character.
+ * - Validate, trim, and auto-number rules for consistency.
+ * - Post a rules embed in the current channel.
  *
- * Formatting Instructions for Admins:
- * - Separate each rule with the "|" character.
- *   Example:
- *     Respect others.|No hate speech.|No spam.
- * - The bot will format them into a clean, numbered list:
- *     1. Respect others.
- *     2. No hate speech.
- *     3. No spam.
- *
- * Notes:
- * - Empty rules and extra spaces are ignored.
- * - Ephemeral responses use flags: 64 for feedback and errors.
- * - Embed descriptions are capped at 2000 characters (Discord limit).
+ * Notes for Recruiters:
+ * This command shows how administrators can standardize rule enforcement.
+ * It ensures rules are formatted cleanly, consistently numbered, and
+ * displayed in a professional embed for server members.
  */
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
@@ -33,69 +23,67 @@ module.exports = {
     .addStringOption(option =>
       option
         .setName('rules')
-        .setDescription('Enter rules separated by "|" (e.g. "Respect.|No spam.|Be kind.")')
-        .setRequired(true),
+        .setDescription('Enter rules separated by "|" (e.g., "Respect.|No spam.|Be kind.")')
+        .setRequired(true)
     ),
 
   async execute(interaction) {
     try {
       const rulesInput = interaction.options.getString('rules');
 
-      // Split by delimiter, trim, and filter out empties
+      // Parse and sanitize input
       let rules = rulesInput
         .split('|')
         .map(rule => rule.trim())
         .filter(rule => rule.length > 0);
 
-      // Validate
       if (rules.length === 0) {
         return interaction.reply({
           content:
-            '⚠️ No valid rules detected.\n\n' +
+            'No valid rules detected.\n\n' +
             'Please separate each rule with the "|" character.\n' +
-            'Example:\n```\nRespect others.|No hate speech.|No spam.\n```',
-          flags: 64,
+            'Example:\n```Respect others.|No hate speech.|No spam.```',
+          flags: 64, // ephemeral
         });
       }
 
       // Auto-number rules
       rules = rules.map((rule, idx) => `${idx + 1}. ${rule}`);
-
       const description = rules.join('\n');
 
+      // Ensure embed does not exceed Discord’s 2000 character limit
       if (description.length > 2000) {
         return interaction.reply({
           content:
-            '⚠️ Rules are too long (exceeds Discord’s 2000 character limit).\n' +
+            'Rules are too long (exceeds Discord’s 2000 character limit).\n' +
             'Please shorten or split them into multiple messages.',
-          flags: 64,
+          flags: 64, // ephemeral
         });
       }
 
-      // Build embed
+      // Build rules embed
       const rulesEmbed = new EmbedBuilder()
-        .setTitle('📜 Server Rules')
+        .setTitle('Server Rules')
         .setDescription(
-          '**Rules in this server will be enforced with a 3-strike system.**\n' +
-          'Three rule breaks and you will be banned.\n\n' +
-          description,
+          '**Rules in this server are enforced with a 3-strike system.**\n' +
+          'Three violations may result in a permanent ban.\n\n' +
+          description
         )
         .setColor('Green')
         .setTimestamp();
 
-      // Send rules to channel
+      // Post rules to the channel
       await interaction.channel.send({ embeds: [rulesEmbed] });
 
       return interaction.reply({
-        content: '✅ Rules have been posted successfully.',
-        flags: 64,
+        content: 'Rules have been posted successfully.',
+        flags: 64, // ephemeral
       });
     } catch (error) {
-      console.error('Error in /send-rules:', error);
+      console.error('[SendRules] Execution error:', error);
       return interaction.reply({
-        content:
-          '❌ An error occurred while sending the rules. Please check your input and try again.',
-        flags: 64,
+        content: 'An error occurred while sending the rules. Please check your input and try again.',
+        flags: 64, // ephemeral
       });
     }
   },
