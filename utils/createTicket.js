@@ -10,12 +10,41 @@ const {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
-} = require('discord.js');
-const Ticket = require('../schemas/ticket');
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+} = require("discord.js");
+const Ticket = require("../schemas/ticket");
 
 module.exports = {
   async showDescriptionModal(interaction) {
-    // existing modal logic (unchanged)
+    try {
+      // Create a modal for ticket description
+      const modal = new ModalBuilder()
+        .setCustomId("ticketDescriptionModal")
+        .setTitle("New Ticket");
+
+      const descriptionInput = new TextInputBuilder()
+        .setCustomId("ticketDescription")
+        .setLabel("Describe your issue")
+        .setStyle(TextInputStyle.Paragraph)
+        .setRequired(true)
+        .setPlaceholder("Please provide details so support can assist you.");
+
+      const row = new ActionRowBuilder().addComponents(descriptionInput);
+      modal.addComponents(row);
+
+      await interaction.showModal(modal);
+    } catch (error) {
+      console.error("[TicketSystem] ❌ Error showing ticket modal:", error);
+      if (!interaction.replied) {
+        await interaction.reply({
+          content:
+            "An error occurred while opening the ticket modal. Please try again later.",
+          flags: 64,
+        });
+      }
+    }
   },
 
   async create(interaction, ticketType, description, guildConfig) {
@@ -26,7 +55,7 @@ module.exports = {
       const existingTicket = await Ticket.findOne({
         userId: interaction.user.id,
         guildId: guild.id,
-        status: { $ne: 'closed' },
+        status: { $ne: "closed" },
       });
 
       if (existingTicket) {
@@ -48,11 +77,18 @@ module.exports = {
           },
           {
             id: interaction.user.id,
-            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+            ],
           },
           {
             id: interaction.client.user.id,
-            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels],
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.ManageChannels,
+            ],
           },
         ],
       });
@@ -63,53 +99,57 @@ module.exports = {
         guildId: guild.id,
         channelId: channel.id,
         ticketType,
-        status: 'open',
+        status: "open",
         description,
       });
 
       // Create ticket embed
       const embed = new EmbedBuilder()
-        .setColor('Blue')
-        .setTitle(`${ticketType.charAt(0).toUpperCase() + ticketType.slice(1)} Ticket`)
+        .setColor("Blue")
+        .setTitle(
+          `${ticketType.charAt(0).toUpperCase() + ticketType.slice(1)} Ticket`
+        )
         .setDescription(
           `Welcome <@${interaction.user.id}>!\n\n` +
-          `This is your private ticket channel.\n\n` +
-          `Use the buttons below to ping support or close the ticket when done.`
+            `This is your private ticket channel.\n\n` +
+            `Use the buttons below to ping support or close the ticket when done.`
         )
         .setFooter({ text: `${guild.name} • Ticket System` })
         .setTimestamp();
 
       // Create Ping Support + Close Ticket buttons
       const pingButton = new ButtonBuilder()
-        .setCustomId('ping-support')
-        .setLabel('Ping Support')
+        .setCustomId("ping-support")
+        .setLabel("Ping Support")
         .setStyle(ButtonStyle.Primary);
 
       const closeButton = new ButtonBuilder()
-        .setCustomId('close-ticket')
-        .setLabel('Close Ticket')
+        .setCustomId("close-ticket")
+        .setLabel("Close Ticket")
         .setStyle(ButtonStyle.Danger);
 
       const row = new ActionRowBuilder().addComponents(pingButton, closeButton);
 
-      // Send embed + buttons
       await channel.send({
         content: `<@${interaction.user.id}> Your ticket has been created.`,
         embeds: [embed],
         components: [row],
       });
 
-      console.log(`[TicketSystem] 🎟️ Created ${ticketType} ticket for ${interaction.user.tag} in guild ${guild.id}`);
+      console.log(
+        `[TicketSystem] 🎟️ Created ${ticketType} ticket for ${interaction.user.tag} in guild ${guild.id}`
+      );
 
       return interaction.reply({
         content: `Your ${ticketType} ticket has been created: <#${channel.id}>`,
         flags: 64,
       });
     } catch (error) {
-      console.error('[TicketSystem] ❌ Error creating ticket:', error);
+      console.error("[TicketSystem] ❌ Error creating ticket:", error);
       if (!interaction.replied) {
         await interaction.reply({
-          content: 'An error occurred while creating the ticket. Please try again later.',
+          content:
+            "An error occurred while creating the ticket. Please try again later.",
           flags: 64,
         });
       }
