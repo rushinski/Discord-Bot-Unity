@@ -1,19 +1,22 @@
 /**
- * Utility: RegisterCommands
- * ----------------------------------------
- * Registers all loaded slash commands with Discord's API.
+ * File: RegisterCommands.js
+ * Purpose: Register all slash commands with the Discord API.
  *
- * Notes:
- * - Pulls commands from client.commands (loaded via ComponentLoader).
- * - Uses Discord REST API to sync application commands.
- * - Must be called once during startup after commands are loaded.
+ * Responsibilities:
+ * - Collect loaded commands from the client.
+ * - Convert them to the required JSON format.
+ * - Send them to Discord for registration via REST API.
+ *
+ * Notes for Recruiters:
+ * This step makes slash commands available to users in Discord.
+ * Without registration, commands cannot be executed.
  */
 
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v10');
 
 module.exports = async function RegisterCommands(client) {
-  console.log('[RegisterCommands] 📦 Starting command registration...');
+  console.log('[RegisterCommands] Starting command registration...');
 
   const commands = [];
 
@@ -22,14 +25,14 @@ module.exports = async function RegisterCommands(client) {
       commands.push(command.data.toJSON());
     } catch (err) {
       console.error(
-        `[RegisterCommands] ❌ Failed to parse command "${command?.data?.name || 'unknown'}":`,
+        `[RegisterCommands] Failed to parse command "${command?.data?.name || 'unknown'}":`,
         err.message
       );
     }
   }
 
   if (!commands.length) {
-    console.warn('[RegisterCommands] ⚠️ No commands found to register.');
+    console.warn('[RegisterCommands] No commands found to register.');
     return;
   }
 
@@ -41,10 +44,8 @@ module.exports = async function RegisterCommands(client) {
       { body: commands }
     );
 
-    console.log(
-      `[RegisterCommands] ✅ Successfully registered ${commands.length} command(s).`
-    );
+    console.log(`[RegisterCommands] Successfully registered ${commands.length} command(s).`);
   } catch (err) {
-    console.error('[RegisterCommands] ❌ Failed to register commands with Discord API:', err.message);
+    console.error('[RegisterCommands] Failed to register commands with Discord API:', err.message);
   }
 };

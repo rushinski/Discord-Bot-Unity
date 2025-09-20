@@ -1,19 +1,17 @@
 /**
- * File: commands/configurations/configure-ticket-system.js
- * Purpose: Configure ticket system settings for a specific guild.
+ * File: configureTicketSystem.js
+ * Purpose: Slash command to configure ticket system settings for a guild.
  *
- * Supported configuration fields:
- * - created-ticket-category: Category where new tickets are created
- * - support-role: General support staff role
- * - verification-role: Role assigned after verification
- * - ticket-transcripts: Text channel where transcripts are stored
- * - ticket-type: Manage structured ticket types (add, remove, list)
+ * Responsibilities:
+ * - Allow administrators to define ticket categories, support/verification roles,
+ *   transcript channels, and custom ticket types.
+ * - Validate that the provided IDs are valid channels or roles.
+ * - Manage ticket type lifecycle (add, remove, list).
+ * - Persist all settings in the GuildConfig schema.
  *
- * Notes:
- * - Validates provided channel or role IDs before saving.
- * - Ticket types are stored as structured objects { label, value, description }.
- * - All settings are saved in the GuildConfig schema.
- * - Command replies are ephemeral (flags: 64) to avoid cluttering public channels.
+ * Notes for Recruiters:
+ * A "ticket system" is a structured support system where users can open private
+ * support channels (tickets). This command configures the backend rules for that system.
  */
 
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
@@ -57,6 +55,10 @@ module.exports = {
         .setRequired(false),
     ),
 
+  /**
+   * Execute the configure-ticket-system command.
+   * @param {object} interaction - The Discord interaction instance.
+   */
   async execute(interaction) {
     const field = interaction.options.getString('field');
     const value = interaction.options.getString('value');
@@ -74,10 +76,7 @@ module.exports = {
         case 'created-ticket-category': {
           const channel = interaction.guild.channels.cache.get(value);
           if (!channel || channel.type !== ChannelType.GuildCategory) {
-            return interaction.reply({
-              content: 'Please provide a valid category channel ID.',
-              flags: 64,
-            });
+            return interaction.reply({ content: 'Please provide a valid category channel ID.', flags: 64 });
           }
           guildConfig.createdTicketCategory = value;
           break;
@@ -85,10 +84,7 @@ module.exports = {
 
         case 'support-role': {
           if (!interaction.guild.roles.cache.has(value)) {
-            return interaction.reply({
-              content: 'Please provide a valid role ID for the support role.',
-              flags: 64,
-            });
+            return interaction.reply({ content: 'Please provide a valid role ID for the support role.', flags: 64 });
           }
           guildConfig.generalSupportRoleId = value;
           break;
@@ -96,10 +92,7 @@ module.exports = {
 
         case 'verification-role': {
           if (!interaction.guild.roles.cache.has(value)) {
-            return interaction.reply({
-              content: 'Please provide a valid role ID for the verification role.',
-              flags: 64,
-            });
+            return interaction.reply({ content: 'Please provide a valid role ID for the verification role.', flags: 64 });
           }
           guildConfig.verificationRoleId = value;
           break;
@@ -108,10 +101,7 @@ module.exports = {
         case 'ticket-transcripts': {
           const channel = interaction.guild.channels.cache.get(value);
           if (!channel || channel.type !== ChannelType.GuildText) {
-            return interaction.reply({
-              content: 'Please provide a valid text channel ID for ticket transcripts.',
-              flags: 64,
-            });
+            return interaction.reply({ content: 'Please provide a valid text channel ID for ticket transcripts.', flags: 64 });
           }
           guildConfig.ticketTranscriptsChannel = value;
           break;
@@ -121,18 +111,12 @@ module.exports = {
           const action = value.toLowerCase();
 
           if (!['add', 'remove', 'list'].includes(action)) {
-            return interaction.reply({
-              content: 'Action must be `add`, `remove`, or `list`.',
-              flags: 64,
-            });
+            return interaction.reply({ content: 'Action must be `add`, `remove`, or `list`.', flags: 64 });
           }
 
           if (action === 'add') {
             if (!typeName) {
-              return interaction.reply({
-                content: 'Please provide a name for the new ticket type.',
-                flags: 64,
-              });
+              return interaction.reply({ content: 'Please provide a name for the new ticket type.', flags: 64 });
             }
 
             const newType = {
@@ -149,10 +133,7 @@ module.exports = {
 
           if (action === 'remove') {
             if (!typeName) {
-              return interaction.reply({
-                content: 'Please provide the name of the ticket type to remove.',
-                flags: 64,
-              });
+              return interaction.reply({ content: 'Please provide the name of the ticket type to remove.', flags: 64 });
             }
 
             const typeValue = typeName.toLowerCase().replace(/\s+/g, '-');
@@ -168,19 +149,13 @@ module.exports = {
               .map(t => `• ${t.label} — ${t.description || 'No description'}`)
               .join('\n');
 
-            return interaction.reply({
-              content: `Configured ticket types:\n${list}`,
-              flags: 64,
-            });
+            return interaction.reply({ content: `Configured ticket types:\n${list}`, flags: 64 });
           }
           break;
         }
 
         default:
-          return interaction.reply({
-            content: 'Invalid configuration field selected.',
-            flags: 64,
-          });
+          return interaction.reply({ content: 'Invalid configuration field selected.', flags: 64 });
       }
 
       // Save updated configuration
@@ -192,7 +167,7 @@ module.exports = {
         flags: 64,
       });
     } catch (error) {
-      console.error('[Config] ❌ Error in configure-ticket-system command:', error);
+      console.error('[ConfigureTicketSystem] Error while updating ticket system config:', error);
       return interaction.reply({
         content: 'An unexpected error occurred while updating the ticket system configuration.',
         flags: 64,

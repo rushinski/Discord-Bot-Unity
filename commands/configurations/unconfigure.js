@@ -1,21 +1,15 @@
 /**
- * Slash Command: /unset
- * ----------------------------------------
- * Clears a previously configured guild setting (channels or categories).
+ * File: unconfigure.js
+ * Purpose: Slash command to clear a previously configured guild setting.
  *
- * Supported fields (must align with /set):
- * - moderation-log: Text channel for moderation logs
- * - ticket-transcripts: Text channel for ticket transcripts
- * - created-ticket-category: Category for created tickets
- * - join-leave-log: Text channel for join/leave notifications
- * - welcome-channel: Text channel for welcome messages
- * - level-up-log: Text channel for level-up notifications
- * - utc-time: Voice channel for UTC time display
- * - utc-date: Voice channel for UTC date display
+ * Responsibilities:
+ * - Allow administrators to reset specific configuration fields back to null.
+ * - Ensure changes are persisted in the GuildConfig schema.
+ * - Provide clear recruiter-friendly responses when no configuration exists or invalid fields are provided.
  *
- * Notes:
- * - Settings are stored in the GuildConfig schema.
- * - Replies are ephemeral (flags: 64).
+ * Notes for Recruiters:
+ * This command reverses earlier configuration commands. For example, if a guild previously
+ * set a "moderation log channel," running this command will clear that setting.
  */
 
 const { SlashCommandBuilder } = require('discord.js');
@@ -23,6 +17,7 @@ const GuildConfig = require('../../schemas/config');
 
 module.exports = {
   admin: true,
+
   data: new SlashCommandBuilder()
     .setName('unconfigure')
     .setDescription('Clear a configured guild channel or category.')
@@ -43,20 +38,24 @@ module.exports = {
         ),
     ),
 
+  /**
+   * Execute the unconfigure command.
+   * @param {object} interaction - The Discord interaction instance.
+   */
   async execute(interaction) {
     const field = interaction.options.getString('field');
 
     try {
-      // ✅ Fetch the guild's configuration
+      // Fetch the guild's configuration
       let guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
       if (!guildConfig) {
         return interaction.reply({
-          content: '⚠️ No configuration found for this server.',
+          content: 'No configuration found for this server.',
           flags: 64,
         });
       }
 
-      // ✅ Unset the selected field
+      // Unset the selected field
       switch (field) {
         case 'moderation-log':
           guildConfig.moderationLogChannel = null;
@@ -84,23 +83,23 @@ module.exports = {
           break;
         default:
           return interaction.reply({
-            content: '⚠️ Invalid field selected.',
+            content: 'Invalid field selected.',
             flags: 64,
           });
       }
 
-      // ✅ Save the updated configuration
+      // Save the updated configuration
       await guildConfig.save();
 
-      // ✅ Confirm success
+      // Confirm success
       return interaction.reply({
-        content: `✅ Successfully unset the **${field.replace(/-/g, ' ')}** field.`,
+        content: `Configuration field **${field.replace(/-/g, ' ')}** has been cleared.`,
         flags: 64,
       });
     } catch (error) {
-      console.error('❌ Error in /unset command:', error);
+      console.error('[UnconfigureCommand] Error while clearing configuration:', error);
       return interaction.reply({
-        content: '❌ An unexpected error occurred while unsetting the configuration.',
+        content: 'An unexpected error occurred while unsetting the configuration.',
         flags: 64,
       });
     }

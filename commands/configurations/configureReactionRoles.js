@@ -1,15 +1,16 @@
 /**
- * Command: /configure-reaction-roles
- * ----------------------------------
- * Configures or updates a reaction-role category dynamically.
- * Stores category description and emoji:roleName mappings
- * in the database for use by /send-role-select.
+ * File: configureReactionRoles.js
+ * Purpose: Slash command to configure or update a reaction-role category.
  *
- * Example usage:
- * /configure-reaction-roles
- *   category: continent
- *   description: "Select your continent"
- *   roles: 🦁:Africa, 🐼:Asia
+ * Responsibilities:
+ * - Allow administrators to define categories for reaction roles.
+ * - Store an embed description and emoji-to-role mappings in the database.
+ * - Support updating existing categories or creating new ones.
+ *
+ * Notes for Recruiters:
+ * Reaction roles let users assign themselves roles by clicking on emojis.
+ * This command configures the available categories so that another command
+ * (e.g., /send-role-select) can later post the interactive role selection message.
  */
 
 const { SlashCommandBuilder } = require('discord.js');
@@ -20,26 +21,30 @@ module.exports = {
 
   data: new SlashCommandBuilder()
     .setName('configure-reaction-roles')
-    .setDescription('Configure a reaction-role category dynamically.')
+    .setDescription('Configure or update a reaction-role category.')
     .addStringOption(option =>
       option
         .setName('category')
         .setDescription('Category name (e.g., continent, spender, troop)')
-        .setRequired(true)
+        .setRequired(true),
     )
     .addStringOption(option =>
       option
         .setName('description')
-        .setDescription('Description text for the embed')
-        .setRequired(true)
+        .setDescription('Embed description text for the role category')
+        .setRequired(true),
     )
     .addStringOption(option =>
       option
         .setName('roles')
-        .setDescription('Comma-separated list of emoji:roleName (e.g., 🦁:Africa, 🐼:Asia)')
-        .setRequired(true)
+        .setDescription('Comma-separated emoji:roleName list (e.g., 🦁:Africa, 🐼:Asia)')
+        .setRequired(true),
     ),
 
+  /**
+   * Execute the configure-reaction-roles command.
+   * @param {object} interaction - The Discord interaction instance.
+   */
   async execute(interaction) {
     await interaction.deferReply({ flags: 64 });
 
@@ -48,7 +53,7 @@ module.exports = {
       const description = interaction.options.getString('description').trim();
       const rolesInput = interaction.options.getString('roles').trim();
 
-      // 🧩 Parse emoji:roleName pairs
+      // Parse emoji:roleName pairs
       const roles = rolesInput.split(',').map(pair => {
         const [emoji, roleName] = pair.trim().split(':');
         if (!emoji || !roleName) {
@@ -57,7 +62,7 @@ module.exports = {
         return { emoji: emoji.trim(), roleName: roleName.trim() };
       });
 
-      // 🔄 Upsert configuration
+      // Find existing configuration or create new
       const existing = await RoleReactionMessage.findOne({
         messageType: category,
         guildId: interaction.guild.id,
@@ -67,28 +72,28 @@ module.exports = {
         existing.description = description;
         existing.roles = roles;
         await existing.save();
-        console.log(`[RoleSystem] Updated reaction role config: ${category} in guild ${interaction.guild.id}`);
+        console.log(`[ConfigureReactionRoles] Updated config: ${category} in guild ${interaction.guild.id}`);
       } else {
         await RoleReactionMessage.create({
           messageType: category,
           guildId: interaction.guild.id,
           channelId: interaction.channel.id,
-          messageId: null, // will be set when /send-role-select posts
+          messageId: null, // Will be linked when /send-role-select posts
           description,
           roles,
         });
-        console.log(`[RoleSystem] Created new reaction role config: ${category} in guild ${interaction.guild.id}`);
+        console.log(`[ConfigureReactionRoles] Created new config: ${category} in guild ${interaction.guild.id}`);
       }
 
       await interaction.editReply({
-        content: `✅ Reaction-role category **${category}** configured successfully!`,
+        content: `Reaction-role category **${category}** configured successfully.`,
         flags: 64,
       });
     } catch (error) {
-      console.error(`[RoleSystem] Error configuring reaction roles in guild ${interaction.guild?.id}:`, error);
+      console.error(`[ConfigureReactionRoles] Error configuring category in guild ${interaction.guild?.id}:`, error);
 
       await interaction.editReply({
-        content: '❌ Failed to configure reaction roles. Please check your input format.',
+        content: 'Failed to configure reaction roles. Please check your input format.',
         flags: 64,
       });
     }

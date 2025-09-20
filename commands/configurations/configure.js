@@ -1,20 +1,17 @@
 /**
- * File: commands/configurations/configure.js
- * Purpose: Configure guild-specific logging and general channel settings.
+ * File: configure.js
+ * Purpose: Slash command to configure guild-specific logging and channel settings.
  *
- * Supported fields:
- * - moderation-log: Text channel for moderation logs
- * - join-leave-log: Text channel for join/leave notifications
- * - welcome-channel: Text channel for welcome messages
- * - level-up-log: Text channel for level-up notifications
- * - utc-time: Voice channel for UTC time display
- * - utc-date: Voice channel for UTC date display
+ * Responsibilities:
+ * - Allow administrators to set channels for moderation logs, join/leave logs,
+ *   welcome messages, level-up notifications, and UTC voice displays.
+ * - Validate that the provided channel matches the expected type.
+ * - Persist settings to the GuildConfig schema in the database.
+ * - Provide recruiter-friendly, clear error and success messages.
  *
- * Notes:
- * - Ticket system configuration has been moved to configure-ticket-system.js.
- * - Ensures channel type validation before saving.
- * - Settings are stored in the GuildConfig schema.
- * - Replies are ephemeral (flags: 64).
+ * Notes for Recruiters:
+ * This command is used by server administrators to define where important
+ * system events are logged. Each option maps a server event to a specific channel.
  */
 
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
@@ -47,21 +44,25 @@ module.exports = {
         .setRequired(true),
     ),
 
+  /**
+   * Execute the configure command.
+   * @param {object} interaction - The Discord interaction instance.
+   */
   async execute(interaction) {
     const field = interaction.options.getString('field');
     const channelId = interaction.options.getString('channel-id');
 
     try {
-      // ✅ Validate channel ID
+      // Validate channel ID
       const channel = interaction.guild.channels.cache.get(channelId);
       if (!channel) {
         return interaction.reply({
-          content: '⚠️ Invalid channel/category ID provided. Please ensure the ID is correct.',
+          content: 'Invalid channel/category ID provided. Please ensure the ID is correct.',
           flags: 64,
         });
       }
 
-      // ✅ Validate channel type against selected field
+      // Validate channel type against selected field
       switch (field) {
         case 'moderation-log':
         case 'join-leave-log':
@@ -69,7 +70,7 @@ module.exports = {
         case 'level-up-log':
           if (channel.type !== ChannelType.GuildText) {
             return interaction.reply({
-              content: `⚠️ The field **${field}** requires a **Text Channel**. Please provide a valid Text Channel ID.`,
+              content: `The field **${field}** requires a Text Channel. Please provide a valid Text Channel ID.`,
               flags: 64,
             });
           }
@@ -78,25 +79,25 @@ module.exports = {
         case 'utc-date':
           if (channel.type !== ChannelType.GuildVoice) {
             return interaction.reply({
-              content: `⚠️ The field **${field}** requires a **Voice Channel**. Please provide a valid Voice Channel ID.`,
+              content: `The field **${field}** requires a Voice Channel. Please provide a valid Voice Channel ID.`,
               flags: 64,
             });
           }
           break;
         default:
           return interaction.reply({
-            content: '⚠️ Invalid field selected.',
+            content: 'Invalid field selected.',
             flags: 64,
           });
       }
 
-      // ✅ Fetch or initialize guild configuration
+      // Fetch or initialize guild configuration
       let guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
       if (!guildConfig) {
         guildConfig = new GuildConfig({ guildId: interaction.guild.id });
       }
 
-      // ✅ Update the correct field
+      // Update the correct field
       switch (field) {
         case 'moderation-log':
           guildConfig.moderationLogChannel = channelId;
@@ -118,18 +119,18 @@ module.exports = {
           break;
       }
 
-      // ✅ Save updated configuration
+      // Save updated configuration
       await guildConfig.save();
 
-      // ✅ Confirm success
+      // Confirm success
       return interaction.reply({
-        content: `✅ Successfully updated **${field.replace(/-/g, ' ')}** with ID \`${channelId}\`.`,
+        content: `Configuration updated: **${field.replace(/-/g, ' ')}** is now set to channel ID \`${channelId}\`.`,
         flags: 64,
       });
     } catch (error) {
-      console.error('[Config] Error in configure command:', error);
+      console.error('[ConfigureCommand] Error while updating configuration:', error);
       return interaction.reply({
-        content: '❌ An unexpected error occurred while updating the configuration. Please try again later.',
+        content: 'An unexpected error occurred while updating the configuration. Please try again later.',
         flags: 64,
       });
     }

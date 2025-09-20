@@ -1,21 +1,15 @@
 /**
- * Utility: ReadFolder
- * ----------------------------------------
- * Recursively reads a folder and returns an array of discovered .js modules.
+ * File: ReadFolder.js
+ * Purpose: Recursively read a folder and load all JavaScript modules.
  *
- * Returns:
- * [
- *   {
- *     path: string,   // relative path to the file
- *     depth: number,  // recursion depth remaining
- *     data: any       // required module export
- *   }
- * ]
+ * Responsibilities:
+ * - Traverse subdirectories up to a defined depth.
+ * - Require all `.js` files found.
+ * - Return module metadata including path and loaded data.
  *
- * Notes:
- * - Skips non-JS files.
- * - Respects a max recursion depth (default: 3).
- * - Logs failures but continues execution.
+ * Notes for Recruiters:
+ * This utility enables the bot to automatically discover
+ * new components and events without manual imports.
  */
 
 const fs = require('node:fs');
@@ -29,7 +23,7 @@ function ReadFolder(target = '', depth = 3) {
   try {
     folderFiles = fs.readdirSync(basePath, { withFileTypes: true });
   } catch (err) {
-    console.error(`[ReadFolder] ❌ Failed to read directory: ${basePath}`, err.message);
+    console.error(`[ReadFolder] Failed to read directory: ${basePath}`, err.message);
     return results;
   }
 
@@ -38,7 +32,7 @@ function ReadFolder(target = '', depth = 3) {
 
     if (file.isDirectory()) {
       if (depth <= 0) {
-        console.warn(`[ReadFolder] ⚠️ Maximum depth reached — skipping ${filePath}`);
+        console.warn(`[ReadFolder] Maximum depth reached — skipping ${filePath}`);
         continue;
       }
       results.push(...ReadFolder(filePath, depth - 1));
@@ -50,9 +44,9 @@ function ReadFolder(target = '', depth = 3) {
     try {
       const data = require(path.join(__dirname, '..', filePath));
       results.push({ path: filePath, depth, data });
-      console.log(`[ReadFolder] ✅ Loaded file: ./${filePath}`);
+      console.log(`[ReadFolder] Loaded file: ./${filePath}`);
     } catch (err) {
-      console.error(`[ReadFolder] ❌ Failed to require ./${filePath}:`, err.message);
+      console.error(`[ReadFolder] Failed to require ./${filePath}:`, err.message);
     }
   }
 

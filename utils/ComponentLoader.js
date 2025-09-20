@@ -1,12 +1,15 @@
 /**
- * Utility: ComponentLoader
- * ----------------------------------------
- * Dynamically loads commands, buttons, dropdowns, and modals
- * from their respective folders into the client instance.
+ * File: ComponentLoader.js
+ * Purpose: Dynamically loads bot components (commands, modals).
  *
- * Notes:
- * - Validates required structure before loading.
- * - Provides clear logs for loaded components and failures.
+ * Responsibilities:
+ * - Validate exported structures before loading.
+ * - Map components into the client instance.
+ * - Provide structured logs of what was successfully loaded.
+ *
+ * Notes for Recruiters:
+ * This module ensures commands and modals are discovered
+ * automatically from the filesystem and made available to the bot.
  */
 
 const { existsSync } = require('node:fs');
@@ -20,7 +23,7 @@ module.exports = function ComponentLoader(client) {
     client[module] = new Map();
 
     if (!existsSync(`${__dirname}/../${module}`)) {
-      console.warn(`[ComponentLoader] ⚠️ Skipping missing folder: ${module}`);
+      console.warn(`[ComponentLoader] Skipping missing folder: ${module}`);
       continue;
     }
 
@@ -44,15 +47,12 @@ module.exports = function ComponentLoader(client) {
           client[module].set(data.customID, data);
         }
 
-        console.log(`[ComponentLoader] ✅ Loaded ${module.slice(0, -1)}: ./${path}`);
+        console.log(`[ComponentLoader] Loaded ${module.slice(0, -1)}: ./${path}`);
       } catch (error) {
-        console.error(
-          `[ComponentLoader] ❌ Failed to load ./${path} (${module}):`,
-          error.message
-        );
+        console.error(`[ComponentLoader] Failed to load ./${path} (${module}):`, error.message);
       }
     }
 
-    console.log(`[ComponentLoader] 📦 ${client[module].size} ${module} loaded.`);
+    console.log(`[ComponentLoader] ${client[module].size} ${module} loaded.`);
   }
 };
