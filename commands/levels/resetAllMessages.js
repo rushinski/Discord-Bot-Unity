@@ -1,15 +1,17 @@
 /**
- * Slash Command: /reset-all-messages
- * ----------------------------------------
- * Allows administrators to reset the message counts
- * and levels of all users in the server back to zero.
+ * Command: /reset-all-messages
+ * Purpose: Reset the message counts and levels of all users in the database.
  *
- * Notes:
- * - Only users with the "Manage Server" permission
- *   can execute this command.
- * - This action affects ALL users in the database.
- * - Uses bulk update for efficiency and avoids timeouts
- *   by deferring the reply.
+ * Responsibilities:
+ * - Validate that the executing user has sufficient permissions.
+ * - Perform a bulk reset of message counts and levels across all users.
+ * - Defer interaction replies to prevent timeouts during execution.
+ * - Confirm the reset result to the administrator.
+ *
+ * Notes for Recruiters:
+ * This command demonstrates bulk administrative operations.
+ * It shows how the system can efficiently reset state for all users
+ * while maintaining controlled execution and auditability.
  */
 
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
@@ -21,45 +23,47 @@ module.exports = {
 
   data: new SlashCommandBuilder()
     .setName('reset-all-messages')
-    .setDescription('Reset the levels and message counts of all users.'),
+    .setDescription('Reset all users’ levels and message counts to defaults.'),
 
+  /**
+   * Execution handler for /reset-all-messages.
+   * @param {import('discord.js').CommandInteraction} interaction - The command interaction.
+   */
   async execute(interaction) {
     try {
-      // Ensure the user has the proper permission
+      // Verify administrator permissions
       if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
         return interaction.reply({
-          content: '⚠️ You do not have permission to use this command.',
+          content: 'You do not have permission to use this command.',
           flags: 64,
         });
       }
 
-      // Defer the reply to avoid the 3-second timeout
+      // Defer reply to prevent Discord 3-second timeout
       await interaction.deferReply({ flags: 64 });
 
-      // Perform a bulk update: reset messages and levels for all users
+      // Bulk reset: set all users' messages to 0 and levels to default
       const result = await User.updateMany(
         {},
         { messages: 0, level: levels[0].level }
       );
 
-      // If no users were updated, notify the admin
+      // Handle case where no users exist
       if (result.modifiedCount === 0) {
         return interaction.editReply({
-          content: 'ℹ️ There were no users to reset in the database.',
+          content: 'No users were found in the database to reset.',
         });
       }
 
-      // Confirm the reset was successful
+      // Confirm successful reset
       return interaction.editReply({
-        content: `✅ Successfully reset levels and message counts for **${result.modifiedCount} users**.`,
+        content: `Successfully reset levels and message counts for **${result.modifiedCount} users**.`,
       });
     } catch (error) {
-      // Log the error for debugging
-      console.error('Error in /reset-all-messages command:', error);
+      console.error('[reset-all-messages] Command execution failed:', error);
 
-      // Return a safe, private error message
       return interaction.editReply({
-        content: '❌ An error occurred while resetting user levels. Please try again later.',
+        content: 'An error occurred while resetting user levels. Please try again later.',
       });
     }
   },

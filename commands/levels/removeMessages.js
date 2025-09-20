@@ -1,15 +1,19 @@
 /**
- * Slash Command: /remove-messages
- * ----------------------------------------
- * Allows administrators to manually remove messages
- * from a user's total message count and update their
- * level accordingly.
+ * Command: /remove-messages
+ * Purpose: Allow administrators to decrement a user's message count and update their level.
  *
- * If a level change occurs (including demotions):
- * - The user is notified privately via DM.
- * - The change is logged in the configured log channel (if set).
+ * Responsibilities:
+ * - Validate that the executing user has sufficient permissions.
+ * - Safely decrement the target user's total message count.
+ * - Recalculate the target user's level and persist changes.
+ * - Notify the user privately if their level has changed.
+ * - Optionally log the adjustment in the guild's configured log channel.
+ * - Respond privately to the administrator with confirmation.
  *
- * Responses are always private (ephemeral) to the admin.
+ * Notes for Recruiters:
+ * This command demonstrates administrative overrides that enforce
+ * consistency with progression logic while maintaining auditability
+ * through logging and user notifications.
  */
 
 const { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } = require('discord.js');
@@ -28,21 +32,25 @@ module.exports = {
       option
         .setName('user')
         .setDescription('The user whose messages will be adjusted.')
-        .setRequired(true)
+        .setRequired(true),
     )
     .addIntegerOption(option =>
       option
         .setName('amount')
         .setDescription('The number of messages to remove.')
-        .setRequired(true)
+        .setRequired(true),
     ),
 
+  /**
+   * Execution handler for /remove-messages.
+   * @param {import('discord.js').CommandInteraction} interaction - The command interaction.
+   */
   async execute(interaction) {
     try {
-      // Permission check
+      // Verify administrator permissions
       if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
         return interaction.reply({
-          content: '⚠️ You do not have permission to use this command.',
+          content: 'You do not have permission to use this command.',
           flags: 64,
         });
       }
@@ -50,64 +58,64 @@ module.exports = {
       const target = interaction.options.getUser('user');
       const amount = interaction.options.getInteger('amount');
 
-      // Validate input
+      // Validate input (must be a positive integer)
       if (amount <= 0) {
         return interaction.reply({
-          content: '⚠️ Please specify a valid positive number of messages to remove.',
+          content: 'Please specify a positive number of messages to remove.',
           flags: 64,
         });
       }
 
-      // Fetch user record from database
       let user = await User.findOne({ userId: target.id });
 
       if (!user) {
         return interaction.reply({
-          content: `⚠️ ${target.tag} does not have any recorded messages.`,
+          content: `${target.tag} does not have any recorded messages.`,
           flags: 64,
         });
       }
 
-      // Store previous level before modification
       const previousLevel = user.level;
 
-      // Safely decrement messages (prevent negative totals)
+      // Safely decrement, preventing negative totals
       user.messages = Math.max(0, user.messages - amount);
 
-      // Check for level change
+      // Recalculate level and check for changes
       const { hasChanged, newLevel, message } = checkLevelChange(user, levels, previousLevel);
-
-      // Save updates
       await user.save();
 
-      // Build admin confirmation
-      let confirmationMessage = `✅ Removed **${amount} messages** from **${target.username}**.\nNew total: **${user.messages} messages**.`;
+      // Build private confirmation message for admin
+      let confirmationMessage =
+        `Removed **${amount} messages** from **${target.username}**.\n` +
+        `New total: **${user.messages} messages**.`;
 
       if (hasChanged) {
-        confirmationMessage += `\n📉 Level change: ${message}`;
+        confirmationMessage += `\nLevel update: ${message}`;
 
-        // Notify user via DM
+        // Notify the affected user via DM
         try {
           await target.send(
-            `⚠️ Your level has changed due to message adjustments.\nYou are now **${newLevel}**.`
+            `Your level has been updated due to message adjustments.\nYou are now **${newLevel}**.`
           );
         } catch {
-          console.warn(`Could not send DM to user ${target.id}`);
+          console.warn(`[remove-messages] Unable to send DM to user ${target.id}`);
         }
 
-        // Log to configured guild channel
+        // Log adjustment to the guild channel if configured
         const guildConfig = await GuildConfig.findOne({ guildId: interaction.guild.id });
         if (guildConfig && guildConfig.levelUpLogChannel) {
           const logChannel = interaction.guild.channels.cache.get(guildConfig.levelUpLogChannel);
           if (logChannel) {
             const embed = new EmbedBuilder()
-              .setColor(0xED4245) // red
-              .setTitle("📉 Level Adjustment")
-              .setDescription(`<@${target.id}> has been reassigned to **${newLevel}** (via admin adjustment).`)
+              .setColor(0xed4245) // red
+              .setTitle('Level Adjustment')
+              .setDescription(
+                `<@${target.id}> has been reassigned to **${newLevel}** (via admin adjustment).`
+              )
               .addFields(
-                { name: "Action", value: "Messages Removed", inline: true },
-                { name: "Amount", value: `${amount}`, inline: true },
-                { name: "New Total", value: `${user.messages}`, inline: true }
+                { name: 'Action', value: 'Messages Removed', inline: true },
+                { name: 'Amount', value: `${amount}`, inline: true },
+                { name: 'New Total', value: `${user.messages}`, inline: true },
               )
               .setTimestamp();
 
@@ -121,10 +129,10 @@ module.exports = {
         flags: 64,
       });
     } catch (err) {
-      console.error('Error executing /remove-messages command:', err);
+      console.error('[remove-messages] Command execution failed:', err);
 
       return interaction.reply({
-        content: '⚠️ An error occurred while processing your request. Please try again later.',
+        content: 'An error occurred while processing your request. Please try again later.',
         flags: 64,
       });
     }

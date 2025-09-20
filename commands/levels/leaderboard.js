@@ -1,11 +1,17 @@
 /**
- * Slash Command: /leaderboard
- * ----------------------------------------
- * Displays the top 10 users in the server
- * ranked by total message count, including
- * their current level.
+ * Command: /leaderboard
+ * Purpose: Display the top 10 users ranked by message count and current level.
  *
- * Useful for tracking engagement and activity.
+ * Responsibilities:
+ * - Query the database for the most active users, sorted by total messages.
+ * - Construct a ranked leaderboard including each user’s level and message total.
+ * - Present results in a structured embed for readability.
+ * - Handle cases where no user activity exists yet.
+ *
+ * Notes for Recruiters:
+ * This command highlights how user engagement data can be surfaced
+ * into a visible ranking system. It complements /level-progress by
+ * showing a community-wide view of participation.
  */
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
@@ -15,47 +21,49 @@ const levels = require('../../data/levels');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('leaderboard')
-    .setDescription('Displays the top chatters in the server.'),
+    .setDescription('Display the top 10 users by activity and level.'),
 
+  /**
+   * Execution handler for /leaderboard.
+   * @param {import('discord.js').CommandInteraction} interaction - The command interaction.
+   */
   async execute(interaction) {
     try {
-      // Fetch the top 10 users sorted by message count (highest first)
+      // Fetch top 10 users, ordered by message count
       const topUsers = await User.find().sort({ messages: -1 }).limit(10);
 
-      // Handle case where no user records exist
       if (topUsers.length === 0) {
-        return interaction.reply(
-          '⚠️ No activity has been recorded yet. Start a conversation to appear on the leaderboard!'
-        );
+        return interaction.reply({
+          content: 'No activity has been recorded yet. Start participating to appear on the leaderboard.',
+          flags: 64,
+        });
       }
 
-      // Build leaderboard display string
+      // Build the leaderboard as a formatted string
       const leaderboard = topUsers
         .map((user, index) => {
-          const rank = `**#${index + 1}**`;
+          const rank = `#${index + 1}`;
           const mention = `<@${user.userId}>`;
-          const level =
-            levels.find(lvl => lvl.level === user.level)?.level || 'Unknown';
-          const stats = `${user.messages} messages`;
-          return `${rank} ${mention} — Level: **${level}** | ${stats}`;
+          const level = levels.find(lvl => lvl.level === user.level)?.level || 'Unknown';
+          return `${rank} ${mention} — Level: **${level}** | ${user.messages} messages`;
         })
         .join('\n');
 
-      // Create an embed for professional display
+      // Create a structured embed for display
       const leaderboardEmbed = new EmbedBuilder()
-        .setTitle('🏆 Server Leaderboard')
+        .setTitle('Server Leaderboard')
         .setDescription(leaderboard)
-        .setColor(0xffd700) // Gold
-        .setFooter({ text: 'Use /level-progress to view your personal stats.' });
+        .setColor(0xffd700) // gold
+        .setFooter({ text: 'Use /level-progress to view your personal statistics.' });
 
-      // Reply with the leaderboard
       return interaction.reply({ embeds: [leaderboardEmbed] });
     } catch (err) {
-      // Log error for debugging but keep user-facing message professional
-      console.error('Error generating leaderboard:', err);
-      await interaction.reply(
-        '⚠️ An error occurred while retrieving the leaderboard. Please try again later.'
-      );
+      console.error('[leaderboard] Command execution failed:', err);
+
+      return interaction.reply({
+        content: 'An error occurred while retrieving the leaderboard. Please try again later.',
+        flags: 64,
+      });
     }
   },
 };

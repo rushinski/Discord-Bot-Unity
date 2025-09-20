@@ -1,11 +1,17 @@
 /**
- * Slash Command: /enable-levelup
- * ----------------------------------------
- * Allows a user to enable their level-up
- * notification messages.
+ * Command: /enable-levelup
+ * Purpose: Allow users to enable direct notifications when their level changes.
  *
- * Users can disable notifications using
- * the `/disable-levelup` command.
+ * Responsibilities:
+ * - Retrieve or create the requesting user’s record in the database.
+ * - Update the user’s preferences to enable notifications.
+ * - Persist changes to the database.
+ * - Confirm the update with a private (ephemeral) response.
+ *
+ * Notes for Recruiters:
+ * This command complements /disable-levelup by giving users
+ * full control over whether they receive level change notifications.
+ * It demonstrates clean persistence of user preferences.
  */
 
 const { SlashCommandBuilder } = require('discord.js');
@@ -16,14 +22,17 @@ module.exports = {
     .setName('enable-levelup')
     .setDescription('Enable your level-up notifications.'),
 
+  /**
+   * Execution handler for /enable-levelup.
+   * @param {import('discord.js').CommandInteraction} interaction - The command interaction.
+   */
   async execute(interaction) {
     const userId = interaction.user.id;
 
     try {
-      // Look up the user record in the database
+      // Retrieve or create user record
       let user = await User.findOne({ userId });
 
-      // If no record exists, create one with notifications enabled
       if (!user) {
         user = new User({
           userId,
@@ -31,24 +40,20 @@ module.exports = {
           notificationsEnabled: true,
         });
       } else {
-        // Update the setting on the existing user record
         user.notificationsEnabled = true;
       }
 
-      // Persist changes
       await user.save();
 
-      // Confirm success to the user (ephemeral)
-      await interaction.reply({
-        content: '✅ Your level-up notifications have been enabled.',
+      return interaction.reply({
+        content: 'Your level-up notifications have been enabled.',
         flags: 64,
       });
     } catch (err) {
-      // Log error for debugging but keep user-facing message professional
-      console.error('Error enabling level-up notifications:', err);
+      console.error('[enable-levelup] Command execution failed:', err);
 
-      await interaction.reply({
-        content: '⚠️ An error occurred while updating your settings. Please try again later.',
+      return interaction.reply({
+        content: 'An error occurred while updating your settings. Please try again later.',
         flags: 64,
       });
     }
