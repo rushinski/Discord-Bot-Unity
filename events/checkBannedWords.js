@@ -1,29 +1,28 @@
 /**
  * Event: messageCreate → Banned Word Check
- * ----------------------------------------
+ *
  * Purpose:
- * - Detect and handle use of banned words/phrases in messages.
- * - Apply severity-based moderation actions:
- *   - low: warning only (2 warnings = 1 strike)
- *   - medium: 1 strike
- *   - high: 2 strikes
- *   - critical: instant ban
+ * Detect and handle use of banned words or phrases in messages. Apply
+ * severity-based moderation actions consistently across the server.
  *
- * Behavior:
- * - Deletes offending messages immediately.
- * - Tracks warnings and strikes in the Infractions schema.
- * - Bans users after 3 strikes or on critical offenses.
- * - Logs all actions to a configured moderation log channel.
- * - Notifies the offender via DM.
+ * Responsibilities:
+ * - Monitor messages for banned content using fuzzy matching.
+ * - Delete offending messages immediately.
+ * - Apply escalation rules:
+ *   - Low severity → warning (two warnings = one strike).
+ *   - Medium severity → one strike.
+ *   - High severity → two strikes.
+ *   - Critical severity → immediate ban.
+ * - Track warnings and strikes in the Infractions schema.
+ * - Ban users after three strikes or on critical offenses.
+ * - Log all actions to a configured moderation log channel.
+ * - Notify the offender via direct message when possible.
  *
- * Dependencies:
- * - data/bannedWords.js (defines words + severity levels)
- * - schemas/infractions.js (stores warnings + strikes per user/guild)
- * - schemas/config.js (provides log channel IDs)
- *
- * Notes:
- * - Uses fuzzy matching (Levenshtein distance) to detect obfuscated words.
- * - Logs errors to console and provides error notices to admins if moderation fails.
+ * Recruiter Notes:
+ * This event demonstrates responsible moderation enforcement. Input is
+ * sanitized, escalation rules are consistently applied, and actions are
+ * logged for transparency. Error handling ensures that failures in
+ * notification or logging do not compromise the enforcement process.
  */
 
 const { EmbedBuilder } = require('discord.js');
@@ -32,7 +31,14 @@ const bannedWords = require('../data/bannedWords');
 const Infractions = require('../schemas/infractions');
 const GuildConfig = require('../schemas/config');
 
-// Fuzzy matching check
+/**
+ * Check if two strings are similar enough to be considered a match.
+ * Used to detect obfuscated variants of banned words.
+ * @param {string} word - The banned word to check against.
+ * @param {string} messageContent - The user-provided message content.
+ * @param {number} threshold - Similarity threshold (0–1).
+ * @returns {boolean} True if similarity is greater than or equal to threshold.
+ */
 function isSimilar(word, messageContent, threshold = 0.8) {
   const normalizedWord = word.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const normalizedMessage = messageContent.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -43,19 +49,26 @@ function isSimilar(word, messageContent, threshold = 0.8) {
 
 module.exports = {
   name: 'messageCreate',
+
+  /**
+   * Execute the banned word check for a new message.
+   * @param {object} message - The Discord message object.
+   */
   async execute(message) {
     if (message.author.bot || !message.guild) return;
 
+    // Identify the first banned word match (if any).
     const match = bannedWords.find(entry => isSimilar(entry.word, message.content));
     if (!match) return;
 
     try {
-      const originalContent = message.content; // ✅ Save content before deletion
+      const originalContent = message.content;
       await message.delete();
 
       const { guild, author } = message;
       const userId = author.id;
 
+      // Retrieve or initialize user infractions record.
       let userInfractions = await Infractions.findOne({ userId, guildId: guild.id });
       if (!userInfractions) {
         userInfractions = new Infractions({ userId, guildId: guild.id, strikes: 0, warnings: 0 });
@@ -63,71 +76,71 @@ module.exports = {
 
       let actionTaken = '';
 
-      // Apply severity rules
+      // Apply severity-based discipline.
       if (match.severity === 'critical') {
-        // ✅ DM before banning
+        // Notify the user before banning, if possible.
         try {
           await author.send(
-            `🚫 You have been **banned** from **${guild.name}** for using a critical banned word.\n` +
-            `**Word Used:** ${match.word}`
+            `You have been banned from "${guild.name}" for using a prohibited word.\n` +
+            `Banned Word: ${match.word}`
           );
         } catch {
-          console.warn(`Could not DM ${author.tag} before banning`);
+          console.warn(`[Moderation] Could not notify ${author.tag} before banning.`);
         }
 
         await guild.members.ban(userId, { reason: `Critical banned word: ${match.word}` });
         actionTaken = 'User banned (critical offense)';
       } else if (match.severity === 'high') {
         userInfractions.strikes += 2;
-        actionTaken = '2 strikes (high severity)';
+        actionTaken = 'Two strikes issued (high severity).';
       } else if (match.severity === 'medium') {
         userInfractions.strikes += 1;
-        actionTaken = '1 strike (medium severity)';
+        actionTaken = 'One strike issued (medium severity).';
       } else if (match.severity === 'low') {
         userInfractions.warnings = (userInfractions.warnings || 0) + 1;
         if (userInfractions.warnings >= 2) {
-          userInfractions.warnings = 0; // Reset warnings
+          userInfractions.warnings = 0;
           userInfractions.strikes += 1;
-          actionTaken = 'Converted 2 warnings into 1 strike';
+          actionTaken = 'Two warnings converted into one strike.';
         } else {
-          actionTaken = 'Warning issued (low severity)';
+          actionTaken = 'Warning issued (low severity).';
         }
       }
 
       await userInfractions.save();
 
-      // ✅ Ban if strike threshold reached
+      // Enforce ban if the user has reached three strikes.
       if (userInfractions.strikes >= 3) {
         try {
           await author.send(
-            `🚫 You have been **banned** from **${guild.name}** after reaching 3 strikes for banned words.`
+            `You have been banned from "${guild.name}" after reaching three strikes for repeated violations.`
           );
         } catch {
-          console.warn(`Could not DM ${author.tag} before banning`);
+          console.warn(`[Moderation] Could not notify ${author.tag} before banning.`);
         }
 
-        await guild.members.ban(userId, { reason: 'Reached 3 strikes for banned words' });
-        actionTaken = 'User banned (3 strikes)';
+        await guild.members.ban(userId, { reason: 'Three strikes for banned words' });
+        actionTaken = 'User banned (three strikes).';
         userInfractions.strikes = 0;
         userInfractions.warnings = 0;
         await userInfractions.save();
       }
 
-      // ✅ DM the offender (only if not already banned above)
-      if (!['User banned (critical offense)', 'User banned (3 strikes)'].includes(actionTaken)) {
+      // Notify user if not already banned.
+      if (!actionTaken.includes('banned')) {
         try {
           await author.send(
-            `⚠️ You used a banned word in **${guild.name}**.\n` +
-            `**Word Used:** ${match.word}\n` +
-            `**Action Taken:** ${actionTaken}\n` +
-            `Current strikes: ${userInfractions.strikes}/3.`
+            `A prohibited word was detected in "${guild.name}".\n` +
+            `Banned Word: ${match.word}\n` +
+            `Action Taken: ${actionTaken}\n` +
+            `Current Strikes: ${userInfractions.strikes}/3`
           );
         } catch {
-          console.warn(`Could not DM ${author.tag}`);
+          console.warn(`[Moderation] Could not notify ${author.tag} of infraction.`);
         }
       }
 
-      // ✅ Log to moderation channel
+      // Log details to the moderation channel, if configured.
       const logChannelData = await GuildConfig.findOne({ guildId: guild.id });
       if (logChannelData?.moderationLogChannel) {
         const logChannel = guild.channels.cache.get(logChannelData.moderationLogChannel);
@@ -137,34 +150,34 @@ module.exports = {
             .setColor('Red')
             .addFields(
               { name: 'User', value: `${author.tag} (<@${userId}>)` },
-              { name: 'Message Content', value: originalContent || 'No content' }, // ✅ Preserved content
-              { name: 'Banned Word', value: match.word }, // ✅ Explicit banned word
+              { name: 'Message Content', value: originalContent || 'No content' },
+              { name: 'Banned Word', value: match.word },
               { name: 'Severity', value: match.severity },
               { name: 'Action Taken', value: actionTaken },
               { name: 'Strikes', value: `${userInfractions.strikes}/3` },
               { name: 'Warnings', value: `${userInfractions.warnings || 0}/2` },
-              { name: 'Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>` },
+              { name: 'Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>` }
             );
 
           await logChannel.send({ embeds: [embed] });
         }
       }
     } catch (error) {
-      console.error('Error handling banned word detection:', error);
+      console.error('[Moderation] Error handling banned word detection:', error);
 
-      // Attempt to notify admins via log channel
+      // Attempt to notify admins of error via log channel.
       try {
         const logChannelData = await GuildConfig.findOne({ guildId: message.guild.id });
         if (logChannelData?.moderationLogChannel) {
           const logChannel = message.guild.channels.cache.get(logChannelData.moderationLogChannel);
           if (logChannel) {
             await logChannel.send({
-              content: `❌ Error occurred while processing banned word detection for <@${message.author.id}>. Check console logs for details.`,
+              content: `An error occurred while processing banned word detection for <@${message.author.id}>. See logs for details.`,
             });
           }
         }
       } catch {
-        // Fallback: if logging also fails, just rely on console
+        // Fallback: rely on console logs if admin notification also fails.
       }
     }
   },

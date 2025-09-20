@@ -1,38 +1,41 @@
 /**
- * Data: Banned Words List
- * ----------------------------------------
- * Defines banned words/phrases and their severity levels.
- * Used by the moderation system (events/checkBannedWords.js)
- * to determine appropriate actions against offenders.
+ * File: bannedWords.js
+ * Purpose:
+ * Define a list of banned words and phrases with severity levels.
+ * This dataset is used by the moderation system (see events/checkBannedWords.js)
+ * to determine appropriate disciplinary actions when violations occur.
+ *
+ * Responsibilities:
+ * - Provide clear mappings between banned terms and their severity category.
+ * - Support consistent moderation by encoding escalation logic in one place.
  *
  * Severity Levels:
- * - low: issues a warning (2 warnings = 1 strike)
- * - medium: 1 strike
- * - high: 2 strikes
- * - critical: immediate ban
+ * - low: Issues a warning (two warnings escalate into one strike).
+ * - medium: Directly issues one strike.
+ * - high: Directly issues two strikes.
+ * - critical: Immediate ban from the server.
  *
- * Notes:
- * - Matching is case-insensitive by default.
- * - Fuzzy matching is used to detect obfuscated variants.
- * - Keep the list concise and aligned with community standards.
- * - For advanced filtering, regex patterns can be implemented.
+ * Recruiter Notes:
+ * This list is intentionally simple to illustrate how configurable moderation
+ * rules are maintained. In production, these entries would be aligned with
+ * community standards and possibly stored in a database for easy updates.
  */
 
 module.exports = [
-  // Low severity (warnings → 2 warnings = 1 strike)
+  // Low severity (minor issues, warning only)
   { word: 'spam', severity: 'low' },
   { word: 'annoying', severity: 'low' },
 
-  // Medium severity (1 strike)
+  // Medium severity (strike-worthy offenses)
   { word: 'hate speech', severity: 'medium' },
-  { word: 'profanity1', severity: 'medium' },
-  { word: 'profanity2', severity: 'medium' },
+  { word: 'explicit language', severity: 'medium' },
+  { word: 'offensive remark', severity: 'medium' },
 
-  // High severity (2 strikes)
-  { word: 'slur1', severity: 'high' },
-  { word: 'slur2', severity: 'high' },
+  // High severity (serious offenses, two strikes)
+  { word: 'derogatory slur', severity: 'high' },
+  { word: 'targeted harassment', severity: 'high' },
 
-  // Critical severity (immediate ban)
+  // Critical severity (zero tolerance, immediate ban)
   { word: 'extreme slur', severity: 'critical' },
   { word: 'violent threat', severity: 'critical' },
 ];

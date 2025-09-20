@@ -1,14 +1,18 @@
 /**
- * Slash Command: /id-unban
- * ----------------------------------------
- * Unbans a user from the server by their Discord ID.
+ * Command: /id-unban
  *
- * Example:
- *   /id-unban userid:123456789012345678
+ * Purpose:
+ * Allow administrators to unban a user from the server by their Discord ID.
  *
- * Notes:
- * - Requires the "Ban Members" permission.
- * - Only works if the user is currently banned from the server.
+ * Responsibilities:
+ * - Verify that the invoking user and the bot both have "Ban Members" permission.
+ * - Accept a user ID as input.
+ * - Attempt to remove the ban for the specified user ID.
+ * - Provide clear confirmation or error feedback to the administrator.
+ *
+ * Recruiter Notes:
+ * This command complements the /id-ban command. It highlights error handling,
+ * permission enforcement, and safe reversal of administrative actions.
  */
 
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
@@ -22,7 +26,7 @@ module.exports = {
       option
         .setName('userid')
         .setDescription('The ID of the user to unban')
-        .setRequired(true),
+        .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
@@ -30,25 +34,26 @@ module.exports = {
     const userId = interaction.options.getString('userid');
 
     try {
-      // ✅ Ensure the bot has permission
+      // Ensure the bot has the required permission.
       if (!interaction.guild.members.me.permissions.has(PermissionFlagsBits.BanMembers)) {
         return interaction.reply({
-          content: '⚠️ I do not have permission to unban members in this server.',
-          flags: 64, // ephemeral
+          content: 'The bot does not have permission to unban members in this server.',
+          flags: 64, // Ephemeral reply
         });
       }
 
-      // ✅ Attempt unban
+      // Attempt to remove the ban for the specified user ID.
       await interaction.guild.bans.remove(userId);
 
       return interaction.reply({
-        content: `✅ Successfully unbanned user with ID **${userId}**.`,
+        content: `User with ID ${userId} was unbanned successfully.`,
       });
     } catch (error) {
-      console.error('❌ Error in /id-unban command:', error);
+      console.error('[Moderation:id-unban] Error executing command:', error);
+
       return interaction.reply({
-        content: `❌ Failed to unban user with ID **${userId}**. They may not have been banned, or I lack the required permissions.`,
-        flags: 64, // ephemeral
+        content: `The bot was unable to unban the user with ID ${userId}. They may not currently be banned, or the bot may lack the required permissions.`,
+        flags: 64, // Ephemeral reply
       });
     }
   },

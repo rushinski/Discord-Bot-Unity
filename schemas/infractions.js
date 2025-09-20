@@ -1,66 +1,32 @@
 /**
- * Infractions Schema
- * ------------------
- * Tracks user infractions (warnings + strikes) for moderation.
- * Used in conjunction with banned word detection and other moderation
- * events to enforce community rules.
+ * Schema: Infractions
+ * Purpose: Track warnings and strikes issued to users for moderation purposes.
  *
- * Behavior:
- * - Warnings accumulate from low-severity banned words.
- *   (2 warnings = 1 strike)
- * - Strikes accumulate from medium/high severity infractions.
- * - Critical severity results in immediate ban.
- * - 3 strikes = automatic ban.
+ * Fields:
+ * - guildId: Discord guild (server) identifier.
+ * - userId: Discord user identifier for the member receiving infractions.
+ * - warnings: Count of warnings (2 warnings escalate into 1 strike).
+ * - strikes: Count of strikes (3 strikes escalate into a ban).
  *
- * Example:
- * {
- *   guildId: "1234567890",
- *   userId: "9876543210",
- *   warnings: 1,
- *   strikes: 2
- * }
+ * Notes for Recruiters:
+ * This schema supports moderation by persisting violations and enabling
+ * escalation rules. The design ensures that discipline is consistent
+ * across sessions and unique per user per guild.
  */
 
 const mongoose = require('mongoose');
 
-const InfractionsSchema = new mongoose.Schema(
+const infractionsSchema = new mongoose.Schema(
   {
-    guildId: {
-      type: String,
-      required: true,
-      trim: true,
-      index: true,
-      description: 'Guild/server ID',
-    },
-    userId: {
-      type: String,
-      required: true,
-      trim: true,
-      index: true,
-      description: 'User ID of the member receiving infractions',
-    },
-    warnings: {
-      type: Number,
-      required: true,
-      default: 0,
-      min: 0,
-      description: 'Number of warnings (2 warnings = 1 strike)',
-    },
-    strikes: {
-      type: Number,
-      required: true,
-      default: 0,
-      min: 0,
-      description: 'Number of strikes (3 strikes = ban)',
-    },
+    guildId: { type: String, required: true, trim: true, index: true },
+    userId: { type: String, required: true, trim: true, index: true },
+    warnings: { type: Number, default: 0, min: 0 },
+    strikes: { type: Number, default: 0, min: 0 },
   },
-  {
-    timestamps: true,
-    collection: 'infractions',
-  }
+  { timestamps: true, collection: 'infractions' }
 );
 
-// Ensure uniqueness per guild-user pair
-InfractionsSchema.index({ guildId: 1, userId: 1 }, { unique: true });
+// Ensure uniqueness per guild-user pair.
+infractionsSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
-module.exports = mongoose.model('Infractions', InfractionsSchema);
+module.exports = mongoose.model('Infractions', infractionsSchema);

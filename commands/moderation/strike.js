@@ -1,16 +1,20 @@
 /**
- * Slash Command: /strike
- * ----------------------------------------
- * Issues a strike to a user. 
- * - Each strike is stored in the Infractions schema.
- * - Accumulating 3 strikes results in an automatic ban.
+ * Command: /strike
  *
- * Example:
- *   /strike target:@username
+ * Purpose:
+ * Allow administrators to issue a strike to a user. Strikes are tracked
+ * in the Infractions schema and escalate to a ban after three total strikes.
  *
- * Notes:
- * - Requires the "Ban Members" permission.
- * - Strikes reset after the user is banned.
+ * Responsibilities:
+ * - Verify that the invoking user and bot both have "Ban Members" permission.
+ * - Increment the strike count for the targeted user.
+ * - Automatically ban users who accumulate three strikes.
+ * - Reset user infractions after a ban to maintain consistency.
+ *
+ * Recruiter Notes:
+ * This command shows how disciplinary rules can be enforced consistently
+ * through database persistence. It ensures accountability while
+ * protecting the community with automated escalation.
  */
 
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
@@ -20,12 +24,12 @@ module.exports = {
   admin: true,
   data: new SlashCommandBuilder()
     .setName('strike')
-    .setDescription('Give a user a strike (3 strikes = ban).')
+    .setDescription('Issue a strike to a user (three strikes result in a ban).')
     .addUserOption(option =>
       option
         .setName('target')
         .setDescription('The user to give a strike to')
-        .setRequired(true),
+        .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
@@ -35,52 +39,55 @@ module.exports = {
     const guildId = guild.id;
 
     try {
-      // ✅ Ensure the bot has permission
+      // Ensure the bot has the required permission.
       if (!guild.members.me.permissions.has(PermissionFlagsBits.BanMembers)) {
         return interaction.reply({
-          content: '⚠️ I do not have permission to ban members.',
-          flags: 64,
+          content: 'The bot does not have permission to ban members in this server.',
+          flags: 64, // Ephemeral reply
         });
       }
 
-      // ✅ Find or create user infraction record
+      // Retrieve or initialize the user's infractions record.
       let infraction = await Infractions.findOne({ userId: target.id, guildId });
       if (!infraction) {
-        infraction = new Infractions({ userId: target.id, guildId, strikes: 0 });
+        infraction = new Infractions({ userId: target.id, guildId, strikes: 0, warnings: 0 });
       }
 
-      // ✅ Increment strikes
+      // Increment strike count.
       infraction.strikes += 1;
       await infraction.save();
 
-      // ✅ Handle auto-ban on 3rd strike
+      // Handle automatic ban if the user has reached three strikes.
       if (infraction.strikes >= 3) {
         const member = await guild.members.fetch(target.id).catch(() => null);
 
         if (member) {
-          await member.ban({ reason: 'Accumulated 3 strikes.' });
+          await member.ban({ reason: 'User accumulated three strikes.' });
+
           await interaction.reply({
-            content: `🔨 ${target.tag} has been banned for accumulating **3 strikes**.`,
+            content: `${target.tag} has been banned for accumulating three strikes.`,
           });
         } else {
           await interaction.reply({
-            content: '⚠️ User not found in the server.',
-            flags: 64,
+            content: 'The specified user could not be found in this server.',
+            flags: 64, // Ephemeral reply
           });
         }
 
-        // Reset infractions after ban
+        // Reset infractions record after ban.
         await Infractions.deleteOne({ userId: target.id, guildId });
       } else {
+        // Notify how many strikes the user currently has.
         await interaction.reply({
-          content: `⚠️ ${target.tag} now has **${infraction.strikes}** strike(s).`,
+          content: `${target.tag} now has ${infraction.strikes} strike(s).`,
         });
       }
     } catch (error) {
-      console.error('❌ Error in /strike command:', error);
+      console.error('[Moderation:strike] Error executing command:', error);
+
       return interaction.reply({
-        content: '❌ An unexpected error occurred while processing the strike.',
-        flags: 64,
+        content: 'An error occurred while processing the strike command. Please try again later.',
+        flags: 64, // Ephemeral reply
       });
     }
   },
