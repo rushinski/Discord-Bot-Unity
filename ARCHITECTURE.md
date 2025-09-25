@@ -259,3 +259,9 @@ flowchart TD
 * Configurable strike escalation policies.
 * Multi-ticket configurations.
 * Automated penetration testing & anomaly detection.
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
