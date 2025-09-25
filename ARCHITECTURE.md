@@ -1,24 +1,29 @@
 # Architecture Overview
 
-Unity Bot is a modular, event-driven Discord bot built with **Node.js** and **discord.js v14**, designed around **subsystems** that can scale independently while sharing a common persistence layer in MongoDB. This document describes the system structure, data flows, and subsystem responsibilities.
+Unity Bot is a modular, event-driven Discord bot built with **Node.js** and **discord.js v14**, designed around **subsystems** that scale independently while sharing a common persistence layer in MongoDB. This document outlines the structure, flows, and responsibilities of each subsystem.
 
 ---
 
 ## ⚙️ Entrypoint
 - **`index.js`** bootstraps the bot.
-  - Initializes Discord client with intents.
-  - Loads commands, events, and modals via dynamic loaders.
-  - Registers slash commands with the Discord API.
-  - Routes interactions to the correct command or modal.
+  - Initializes the Discord client with required intents.
+  - Connects to MongoDB.
+  - Loads commands, events, and modals via loaders in `utils/`.
+  - Registers slash commands with Discord’s API.
+  - Routes interactions to the appropriate handler.
 
 ```mermaid
 flowchart TD
     A[Start Bot] --> B[Load Config]
     B --> C[Connect MongoDB]
-    C --> D[Load Commands/Events/Modals]
-    D --> E[Register Slash Commands]
-    E --> F[Ready Event]
-    F --> G[Bot Online]
+    C --> D[Load Commands]
+    C --> E[Load Events]
+    C --> F[Load Modals]
+    D --> G[Register Slash Commands]
+    E --> G
+    F --> G
+    G --> H[Bot Ready]
+    H --> I[Active Operations]
 ```
 
 ---
@@ -26,24 +31,26 @@ flowchart TD
 ## 🧩 Subsystems
 
 ### 🎟 Ticketing & Verification
-- **Flow**: Dropdown → modal → ticket channel → support/verification → transcript archive.
+- **Flow**: Dropdown → modal → ticket channel → support/verification → close → transcript archive.
 - **Features**:
-  - Multi-ticket category configuration.
+  - Configurable ticket categories per guild.
   - Verification tickets for onboarding.
-  - Staff pinging with cooldowns.
-  - Close & archive with transcript export.
+  - Buttons to ping staff (with cooldown), verify users, close tickets.
+  - Closed tickets archived with transcripts.
 - **Persistence**: `Ticket`, `TicketTranscript` schemas.
-- **Transcripts**: Exported to GitHub Gist, fallback to MongoDB.
-- **Impact**: 1000+ transcripts archived across servers.
+- **Transcripts**: Stored via GitHub Gist integration, fallback to MongoDB.
+- **Impact**: 1000+ transcripts archived across production servers.
 
 ```mermaid
 flowchart TD
-    A[User Selects Ticket Type] --> B[Modal Submission]
-    B --> C[Ticket Channel Created]
-    C --> D[Support/Verification Workflow]
-    D --> E[Close Ticket]
-    E --> F[Transcript Archived]
-    F --> G[GitHub Gist / MongoDB]
+    A[User Selects Ticket Type] --> B[Modal Input Submitted]
+    B --> C[Private Ticket Channel Created]
+    C --> D[Support Team/Verification Workflow]
+    D --> E[Ticket Closed by Staff]
+    E --> F[Transcript Generated]
+    F --> G{Storage Option}
+    G -->|Primary| H[GitHub Gist]
+    G -->|Fallback| I[MongoDB Transcript Collection]
 ```
 
 ---
@@ -51,118 +58,149 @@ flowchart TD
 ### 🛡 Moderation
 - **Commands**: `/ban`, `/unban`, `/idBan`, `/idUnban`, `/strike`, `/verifyUser`, `/clear`.
 - **Events**: `checkBannedWords`, `messageDelete`, `messageUpdate`.
-- **Escalation**:
-  - Warnings for low severity.
-  - Strikes for medium severity.
-  - Auto-ban at 3 strikes or critical severity.
+- **Escalation Policy**:
+  - Low severity → warning.
+  - Medium severity → strike.
+  - High severity → 2 strikes.
+  - Critical severity → immediate ban.
 - **Persistence**: `Infractions` schema.
-- **Transparency**: Logs for all actions, infractions reset post-ban.
+- **Transparency**: Logged actions, auto-reset infractions post-ban.
 
 ```mermaid
 flowchart TD
     A[Message Sent] --> B{Contains Banned Word?}
-    B -->|Low Severity| C[Warn User]
-    B -->|Medium Severity| D[Strike]
-    B -->|High Severity| E[2 Strikes]
-    B -->|Critical| F[Immediate Ban]
-    D --> G{3 Strikes?}
-    G -->|Yes| H[Ban User]
+    B -->|No| C[Allow Message]
+    B -->|Low Severity| D[Warn User]
+    B -->|Medium Severity| E[Issue Strike]
+    B -->|High Severity| F[Issue 2 Strikes]
+    B -->|Critical Severity| G[Immediate Ban]
+    E --> H{Strikes >= 3?}
+    H -->|Yes| G
+    H -->|No| I[Track Strike in DB]
 ```
 
 ---
 
 ### 🏆 Leveling System
-- **Tracking**: Increments message count on `messageCreate`.
+- **Tracking**: Each message increments XP (`messageCreate` event).
 - **Features**:
-  - Progression via `levels.js` thresholds.
-  - Leaderboard (`/leaderboard`).
-  - Personal progress (`/levelProgress`).
-  - Admin overrides (`/addMessages`, `/removeMessages`, `/resetAllMessages`).
-  - Opt in/out of notifications.
+  - Level thresholds defined in `data/levels.js`.
+  - `/leaderboard` shows top 10 members.
+  - `/levelProgress` shows current progress toward next level.
+  - Admin overrides: `/addMessages`, `/removeMessages`, `/resetAllMessages`.
+  - Opt-in/out of level-up notifications.
 - **Persistence**: `UserSchema`.
-- **Utils**: `levelUtils.js` centralizes progression logic.
+- **Utils**: `levelUtils.js` centralizes XP → level conversion.
+
+```mermaid
+flowchart TD
+    A[User Sends Message] --> B[Increment Message Count]
+    B --> C[Recalculate Level]
+    C --> D{Level Up?}
+    D -->|Yes| E[Update User Record + Notify]
+    D -->|No| F[Continue Tracking]
+```
 
 ---
 
 ### 🎭 Roles & Counts
 - **Reaction Roles**:
-  - Users self-assign roles by reacting.
-  - Stored in `RoleReactionMessage` schema.
+  - Users add/remove reactions on role-select embeds.
+  - Automatically grants or removes roles.
+  - Stored in `RoleReactionMessage`.
 - **Role Counts**:
-  - Voice channels display live member counts for roles.
-  - Stored in `RoleCountConfig` schema.
+  - Voice channels dynamically renamed to show live member counts.
+  - Config stored in `RoleCountConfig`.
+
+```mermaid
+flowchart TD
+    A[User Reacts to Role Message] --> B[Match Emoji to Role]
+    B --> C[Assign Role]
+    A2[User Removes Reaction] --> D[Remove Role]
+    E[Role Count Config] --> F[Update Voice Channel Name]
+```
 
 ---
 
 ### 🎁 Giveaways
 - **Commands**: `/sendGiveawayMessage`.
-- **Persistence**: `Giveaway` schema.
+- **Persistence**: `Giveaway` schema (title, prize, winners, end time).
 - **Lifecycle**:
-  - Giveaway started and saved to DB.
-  - Bot restarts → resumes giveaway.
-  - Ends at scheduled time, selects winners.
+  - Giveaway started → DB record created.
+  - Participants added during runtime.
+  - On scheduled end → winners selected automatically.
+  - Giveaway state restored on restart.
 
 ```mermaid
 flowchart TD
-    A[Start Giveaway] --> B[Save to DB]
-    B --> C[Wait for End Time]
-    C --> D[Select Winners]
-    D --> E[Announce Results]
+    A[Start Giveaway Command] --> B[Save Giveaway in DB]
+    B --> C[Collect Entrants]
+    C --> D[Wait Until End Time]
+    D --> E[Select Winner(s)]
+    E --> F[Announce in Channel]
 ```
 
 ---
 
 ### 📊 Logging & Lifecycle
 - **Guild Events**:
-  - `guildMemberAdd` → welcome message, log, update member count.
+  - `guildMemberAdd` → welcome embed, join log, update member count.
   - `guildMemberRemove` → departure log, update member count.
 - **Message Logs**:
-  - `messageDelete` → logs author, content, timestamp.
-  - `messageUpdate` → logs before/after edits.
+  - `messageDelete` → logs deleted content.
+  - `messageUpdate` → logs old vs new content.
 - **Startup Recovery**:
-  - Restores giveaways and reaction roles on `ready`.
-  - Updates UTC channels with `readyUtc`.
+  - `ready` restores giveaways and reaction roles.
+  - `readyUtc` updates configured UTC channels.
+
+```mermaid
+flowchart TD
+    A[Bot Startup] --> B[Restore Giveaways]
+    A --> C[Restore Reaction Roles]
+    A --> D[Set Presence]
+    A --> E[Update UTC Channels]
+```
 
 ---
 
 ## 📂 Persistence Layer
-- **Guild Configs**: Centralized configuration per guild (`config.js`).
-- **Users**: Levels and message counts.
-- **Infractions**: Strikes and warnings.
-- **Tickets & Transcripts**: Support history.
-- **Giveaways**: Entrants and winners.
-- **Role Systems**: Reaction roles and role counts.
+- **Guild Configs**: Ticket categories, log channels, role counts, reaction roles.
+- **Users**: Levels, XP, message counts, notification preferences.
+- **Infractions**: Strikes, warnings, bans.
+- **Tickets & Transcripts**: Active tickets + archived support history.
+- **Giveaways**: Entrants, winners, metadata.
+- **Role Systems**: Reaction roles, role count configs.
 
 ---
 
 ## 🔗 External Integrations
-- **Discord API** → Slash commands, modals, events, embeds.
-- **MongoDB** → Persistence of all systems.
+- **Discord API** → Slash commands, modals, embeds, events.
+- **MongoDB** → Persistent datastore for all systems.
 - **GitHub Gist** → Ticket transcripts.
-- **Discord-html-transcripts** → Export formatting.
-- **date-fns / node-cron** → UTC scheduling.
-- **fast-levenshtein** → Fuzzy banned word matching.
-- **GitHub Pages** → Landing page hosting.
+- **discord-html-transcripts** → Transcript formatting.
+- **date-fns / node-cron** → UTC scheduling + cron jobs.
+- **fast-levenshtein** → Fuzzy matching for banned words.
+- **GitHub Pages** → Public landing page.
 
 ---
 
 ## 💡 Strengths
 - Modular subsystems with clear separation of concerns.
-- Resilient startup recovery (state restoration).
+- Recovery after restarts (reaction roles, giveaways).
 - Configurable per guild.
-- Transparent logging for accountability.
-- Production-proven: active across multiple servers.
+- Transparent logs for moderation and support.
+- Scalable, production-proven in multiple servers.
 
 ---
 
 ## 🔮 Future Work
-- Add moderation commands: `/unstrike`, `/warn`, `/unwarn`, `/timeout`, `/untimeout`, `/kick`, `/set-banned-words`.
+- Moderation: `/unstrike`, `/warn`, `/unwarn`, `/timeout`, `/untimeout`, `/kick`, `/set-banned-words`.
 - Owner-only commands: `/reload`, `/shutdown`, `/deploy`.
-- Schema consolidation for efficiency.
-- Unified config management (removes + lists).
-- Expanded logging (channels, actions).
-- Leaderboard pagination & search.
-- Configurable strike policies.
+- Consolidate schemas for efficiency.
+- Unified config management (removes + list in same command).
+- Expanded channel logging.
+- Leaderboard pagination + searchability.
+- Configurable strike escalation policies.
 - Multi-ticket configurations.
 
 ---
