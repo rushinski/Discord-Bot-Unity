@@ -4,7 +4,7 @@
 A **modular Discord bot** built to consolidate commands, events, and support workflows into **one scalable system**.
 Originally designed for a **large-scale gaming community (Kingdom 3743, ~900 members)**, it has since been deployed across **8 servers**, replacing the need for multiple bots.
 
-👉 Explore the **[Unity Bot Landing Page](https://rushinski.github.io/Unity-Landing-Page/#tickets)** for a live showcase.
+👉 Explore the **[Unity Bot Landing Page](https://rushinski.github.io/Unity-Landing-Page)** for a live showcase.
 
 ---
 

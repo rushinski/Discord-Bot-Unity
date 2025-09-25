@@ -83,7 +83,7 @@ These integrations power **commands, persistence, transcripts, scheduling, and d
 - **discord-html-transcripts** → export styled transcripts
 - **date-fns / node-cron** → scheduling + UTC updates
 - **fast-levenshtein** → fuzzy banned-word matching
-- **GitHub Pages** → landing page hosting ([Unity Bot Landing Page](https://rushinski.github.io/Unity-Landing-Page/#tickets))
+- **GitHub Pages** → landing page hosting ([Unity Bot Landing Page](https://rushinski.github.io/Unity-Landing-Page))
 
 ---
 
