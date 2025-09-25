@@ -1,4 +1,4 @@
-# Unified Discord Bot - Community Engagement & Support 🎮
+# Unity Discord Bot - Community Engagement & Support 🎮
 
 [![Live Bot](https://img.shields.io/badge/Live-Active-green?logo=discord)](https://discord.com/)  
 A **modular Discord bot** built to consolidate commands, events, and support workflows into **one scalable system**.

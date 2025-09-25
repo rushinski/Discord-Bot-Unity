@@ -1,8 +1,8 @@
-# Unified Discord Bot - Security Notes
+# Unity Discord Bot - Security Notes
 
 ## 🎯 Purpose
 
-This document outlines the **security considerations** for the Unified Discord Bot.  
+This document outlines the **security considerations** for the Unity Discord Bot.  
 As a community-facing platform handling **user data, moderation actions, and external integrations**, security was a core part of the system design.
 
 ---
@@ -98,7 +98,7 @@ As a community-facing platform handling **user data, moderation actions, and ext
 
 ## ✅ Recruiter-Facing Takeaway
 
-The Unified Discord Bot demonstrates **security-aware design** in a real-world community management context:
+The Unity Discord Bot demonstrates **security-aware design** in a real-world community management context:
 
 - Protected user data with secret transcripts (GitHub Gist + MongoDB fallback).  
 - Safe handling of bot tokens and MongoDB URLs.  

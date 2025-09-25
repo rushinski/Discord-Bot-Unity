@@ -1,8 +1,8 @@
-# Unified Discord Bot - Integrations Overview
+# Unity Discord Bot - Integrations Overview
 
 ## 🎯 Purpose
 
-The Unified Discord Bot integrates with several **third-party services and libraries** to enable its modular community management features.  
+The Unity Discord Bot integrates with several **third-party services and libraries** to enable its modular community management features.  
 These integrations power **commands, persistence, transcripts, scheduling, and deployment workflows**.
 
 ---
