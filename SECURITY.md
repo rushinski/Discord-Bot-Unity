@@ -32,6 +32,7 @@ As a community-facing platform handling **user data, moderation actions, and ext
   - All transcripts default to **secret Gists**.
   - Only moderators receive transcript links in Discord.
   - 1000+ transcripts securely stored across production environments.
+  - Full **audit trail** maintained: ticket open → workflow → closure → transcript.
 
 ---
 
@@ -58,6 +59,7 @@ As a community-facing platform handling **user data, moderation actions, and ext
   - Bot-side `admin` and `owner` flags enforced in handlers.
   - Configurable strike tiers ensure consistency.
   - Verification tickets reduce raid/bot account abuse.
+  - **Rate-limiting & cooldowns** applied to prevent command spam.
 
 ---
 
@@ -79,6 +81,7 @@ As a community-facing platform handling **user data, moderation actions, and ext
 3. **Externalized Risk** → GitHub Gist handles transcript storage, reducing DB bloat.
 4. **Auditability** → All infractions logged, transcripts archived, and tickets closed with traceable history.
 5. **Defense in Depth** → Escalation policies (warnings → strikes → bans) layered with verification workflows.
+6. **Rate-Limiting Awareness** → All moderation commands protected by cooldowns and Discord API safeguards.
 
 ---
 
@@ -89,6 +92,7 @@ As a community-facing platform handling **user data, moderation actions, and ext
 - GitHub Gist, while convenient, may not provide full compliance guarantees.
 - Reliance on manual moderator oversight for enforcement quality.
 - Secrets currently visible in `config.json` in repo → must be migrated fully to `.env`.
+- No automated penetration testing or fuzzing of commands.
 
 ---
 
@@ -101,6 +105,7 @@ The Unified Discord Bot demonstrates **security-aware design** in a real-world c
 - Moderation gated by both Discord and bot-level permissions.  
 - Verification tickets protect against raid-style attacks.  
 - Deployment aligned with best practices for secrets management.  
+- Built-in **audit trail** for every moderation action and ticket lifecycle.  
 
 While lightweight, the bot applies **practical, production-grade security practices** appropriate for community-scale deployment.
 
