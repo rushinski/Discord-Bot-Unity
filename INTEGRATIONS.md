@@ -91,11 +91,11 @@ These integrations power **commands, persistence, transcripts, scheduling, and d
 
 ```mermaid
 flowchart TD
-    U[User] -->|Commands & Events| D[Discord API]
+    U[Discord User] -->|Commands & Events| D[Discord API]
     D --> M[MongoDB]
     D --> G[GitHub Gist]
     GH[GitHub Repo] --> H[Discloud Hosting]
-    D --> L[Landing Page (GitHub Pages)]
+    U --> LP[Landing Page - GitHub Pages]
 ```
 
 ---
