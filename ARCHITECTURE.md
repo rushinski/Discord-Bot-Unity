@@ -71,12 +71,15 @@ flowchart TD
     A[Message Sent] --> B{Contains Banned Word?}
     B -->|No| C[Allow Message]
     B -->|Low Severity| D[Warn User]
-    B -->|Medium Severity| E[Issue Strike]
-    B -->|High Severity| F[Issue 2 Strikes]
-    B -->|Critical Severity| G[Immediate Ban]
-    E --> H{Strikes >= 3?}
-    H -->|Yes| G
-    H -->|No| I[Track Strike in DB]
+    D --> E[Check Total Strikes]
+    B -->|Medium Severity| F[Issue Strike]
+    F --> E
+    B -->|High Severity| G[Issue 2 Strikes]
+    G --> E
+    B -->|Critical Severity| H[Immediate Ban]
+    E --> I{Strikes >= 3?}
+    I -->|Yes| H
+    I -->|No| J[Record Infraction in DB]
 ```
 
 ---
@@ -136,8 +139,8 @@ flowchart TD
     A[Start Giveaway Command] --> B[Save Giveaway in DB]
     B --> C[Collect Entrants]
     C --> D[Wait Until End Time]
-    D --> E[Select Winner(s)]
-    E --> F[Announce in Channel]
+    D --> E[Select Winners]
+    E --> F[Announce Results]
 ```
 
 ---
