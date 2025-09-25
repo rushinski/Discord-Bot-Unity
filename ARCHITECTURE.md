@@ -1,162 +1,168 @@
-# Unified Discord Bot - System Architecture
+# Architecture Overview
 
-## 🎯 Purpose
-
-The Unified Discord Bot was built to **consolidate multiple bots into one modular system** for large-scale community management.  
-Originally designed for **Kingdom 3743 (~900 members)**, it has been deployed across **8 servers**, providing:
-
-- Centralized moderation and rules enforcement
-- Gamified leveling and leaderboards
-- Structured ticketing and support system
-- Role verification and engagement utilities
-- Event-driven engagement
-- Scalable, secure infrastructure aligned with Discord’s permission model
+Unity Bot is a modular, event-driven Discord bot built with **Node.js** and **discord.js v14**, designed around **subsystems** that can scale independently while sharing a common persistence layer in MongoDB. This document describes the system structure, data flows, and subsystem responsibilities.
 
 ---
 
-## 🛠 Core Architecture Overview
-
-The bot is a **modular, event-driven Node.js application** built with **discord.js v14** and backed by **MongoDB persistence**.
-
-### 🔹 Entrypoint (index.js)
-- Initializes `discord.js` client with intents (`Guilds`, `GuildMembers`, `GuildPresences`).
-- Loads config, cooldowns, and cache.
-- Bootstraps loaders:
-  - **ComponentLoader** → buttons, dropdowns, modals
-  - **EventLoader** → Discord event handlers
-  - **RegisterCommands** → slash command registration via Discord REST API
-- Defines a **centralized InteractionHandler** enforcing access control (`admin`, `owner`) and routing execution.
-
----
-
-### 🔹 Commands
-- Located under `/commands/` and organized by domain:
-  - **Levels** → progression management (`leaderboard`, `add/remove messages`, `reset`, `level progress`).
-  - **Moderation** → expanded suite (`idBan`, `idUnban`, `strike`, `set`, `unset`, `verifyUser`).
-  - **Miscellaneous** → utility commands (`say`, `getUtc`).
-  - **Engagement** → `/sendRolesSelect`, `/sendRules`, `/sendTicketSetup`, `/sendVerification`, `/startGiveaway`.
-- Each command is a self-contained module with:
-  - Metadata (`admin`, `owner` flags)
-  - Slash command definition (`SlashCommandBuilder`)
-  - Execution handler
-
----
-
-### 🔹 Events
-- Located under `/events/`.
-- Handle lifecycle, moderation, and engagement:
-  - **Messages** → `messageCreate.js` (leveling, moderation hooks), `messageDelete.js`, `messageUpdate.js`.
-  - **Members** → `guildMemberAdd.js`, `guidlMemberRemove.js`.
-  - **Reactions** → `reactionAdd.js`, `reactionRemove.js` (role handling, verification).
-  - **Tickets** → `ticketSystemHandler.js` (creation), `ticketButtons.js` (management, transcripts).
-  - **Other** → `checkBannedWords.js` (filtering), `ready.js` (startup), `readyUTC.js` (time sync), `updateRoleCount.js` (role stats).
-
----
-
-### 🔹 Persistence (MongoDB via Mongoose)
-- Schemas under `/schemas/`:
-  - `User` → userId, messages, level, notificationsEnabled
-  - `Infractions` → tracks warnings, strikes, bans
-  - `Ticket` → ticket channel, user, guild, status, description
-  - `TicketTranscript` → archived ticket metadata
-  - `Giveaway` → entrants, prize, status, winners
-  - `Config` → per-guild config (ticket categories, transcript channels)
-  - `RoleReactionMessage` → maps reaction-based role messages
-- Provides durable storage for **users, moderation logs, giveaways, tickets, and configs**.
-
----
-
-### 🔹 Utilities
-- Located under `/utils/`:
-  - **Infrastructure** → `RegisterCommands.js`, `EventLoader.js`, `ComponentLoader.js`, `ReadFolder.js`.
-  - **Features** → `createVerificationTicket.js` (verification workflow), `githubGistUtils.js` (ticket transcript upload), `levelUtils.js` (XP/level thresholds).
-
----
-
-### 🔹 Data & Config
-- `/data/levels.js` → defines progression thresholds.
-- `/data/bannedWords.js` → banned word list for moderation.
-- `/config.json` → bot token, Mongo URL, bot ID (**security critical**).
-- `.env` → expected for sensitive overrides in production.
-
----
-
-### 🔹 Infrastructure & Deployment
-- **Hosting** → runs on VPS + Discloud platform.
-- **Discloud Configs** → `discloud.config` + `/discloud/import/*` snapshots for deployment portability.
-- **Backups** → stored in `/discloud/backup/`.
-- Ensures reliability and portability across environments.
-
----
-
-## 🔗 System Data Flow
+## ⚙️ Entrypoint
+- **`index.js`** bootstraps the bot.
+  - Initializes Discord client with intents.
+  - Loads commands, events, and modals via dynamic loaders.
+  - Registers slash commands with the Discord API.
+  - Routes interactions to the correct command or modal.
 
 ```mermaid
 flowchart TD
-
-A[User in Discord] --> B[Slash Command]
-B -->|Handled| C[Command Module]
-C --> D[InteractionHandler]
-D --> E[MongoDB Schemas]
-
-A --> F[Message Event]
-F --> G[messageCreate.js]
-G --> H[User Schema Update]
-G --> I[Level Up Embed]
-
-A --> J[Ticket Dropdown]
-J --> K[ticketSystemHandler.js]
-K --> L[Ticket Schema]
-K --> M[Private Ticket Channel]
-M --> N[ticketButtons.js]
-N --> O[Transcript → GitHub Gist]
-
-A --> P[Moderation Command/Event]
-P --> Q[Infractions Schema]
-Q --> R[Logs/Role Actions]
-
-A --> S[Giveaway Command]
-S --> T[Giveaway Schema]
-S --> U[Entrant Management]
-S --> V[Winner Selection]
+    A[Start Bot] --> B[Load Config]
+    B --> C[Connect MongoDB]
+    C --> D[Load Commands/Events/Modals]
+    D --> E[Register Slash Commands]
+    E --> F[Ready Event]
+    F --> G[Bot Online]
 ```
 
 ---
 
-## 🧩 Subsystem Breakdown
+## 🧩 Subsystems
 
-Subsystem	Implementation	Purpose
-entrypoint	Node.js + discord.js	Bootstraps client, loaders, and handlers
-commands	SlashCommandBuilder modules	Moderation, leveling, verification, giveaways, misc
-events	Event-driven handlers	Lifecycle hooks, engagement, moderation, ticketing, verification
-persistence	MongoDB + Mongoose	Stores users, infractions, giveaways, tickets, configs, transcripts
-support_system	Tickets + buttons + modals	Community support, verification, transcripts
-moderation	Expanded commands + infractions schema	Full admin controls, strikes, bans, verification
-engagement	Role menus, giveaways, UTC utilities	Enhances community interaction
-data	Static configs	Levels, banned words, rules
-infra	VPS + Discloud hosting	Reliable, portable deployment
-security	Discord permission model + flags	Role-based access control, cooldowns, safe execution
+### 🎟 Ticketing & Verification
+- **Flow**: Dropdown → modal → ticket channel → support/verification → transcript archive.
+- **Features**:
+  - Multi-ticket category configuration.
+  - Verification tickets for onboarding.
+  - Staff pinging with cooldowns.
+  - Close & archive with transcript export.
+- **Persistence**: `Ticket`, `TicketTranscript` schemas.
+- **Transcripts**: Exported to GitHub Gist, fallback to MongoDB.
+- **Impact**: 1000+ transcripts archived across servers.
+
+```mermaid
+flowchart TD
+    A[User Selects Ticket Type] --> B[Modal Submission]
+    B --> C[Ticket Channel Created]
+    C --> D[Support/Verification Workflow]
+    D --> E[Close Ticket]
+    E --> F[Transcript Archived]
+    F --> G[GitHub Gist / MongoDB]
+```
 
 ---
 
-## ⚡ Architecture Strengths
+### 🛡 Moderation
+- **Commands**: `/ban`, `/unban`, `/idBan`, `/idUnban`, `/strike`, `/verifyUser`, `/clear`.
+- **Events**: `checkBannedWords`, `messageDelete`, `messageUpdate`.
+- **Escalation**:
+  - Warnings for low severity.
+  - Strikes for medium severity.
+  - Auto-ban at 3 strikes or critical severity.
+- **Persistence**: `Infractions` schema.
+- **Transparency**: Logs for all actions, infractions reset post-ban.
 
-- **Unified system** → replaces multiple bots with one scalable bot
-- **Expanded moderation** → strikes, bans, verification, infractions logging
-- **Gamification** → levels, leaderboards, recognition for active users
-- **Support workflows** → full ticketing lifecycle with transcripts + GitHub Gist storage
-- **Giveaway engine** → community engagement with persistent tracking
-- **Role utilities** → self-assignable roles, live counts, verification system
-- **Secure by design** → aligns with Discord’s built-in permissions & access model
-- **Production-proven** → scaled to 900+ members, running in 8 servers
-- **Deployment-ready** → Discloud integration, VPS hosting, backups
-- **Extensible** → modular structure for commands, events, and components
+```mermaid
+flowchart TD
+    A[Message Sent] --> B{Contains Banned Word?}
+    B -->|Low Severity| C[Warn User]
+    B -->|Medium Severity| D[Strike]
+    B -->|High Severity| E[2 Strikes]
+    B -->|Critical| F[Immediate Ban]
+    D --> G{3 Strikes?}
+    G -->|Yes| H[Ban User]
+```
+
+---
+
+### 🏆 Leveling System
+- **Tracking**: Increments message count on `messageCreate`.
+- **Features**:
+  - Progression via `levels.js` thresholds.
+  - Leaderboard (`/leaderboard`).
+  - Personal progress (`/levelProgress`).
+  - Admin overrides (`/addMessages`, `/removeMessages`, `/resetAllMessages`).
+  - Opt in/out of notifications.
+- **Persistence**: `UserSchema`.
+- **Utils**: `levelUtils.js` centralizes progression logic.
+
+---
+
+### 🎭 Roles & Counts
+- **Reaction Roles**:
+  - Users self-assign roles by reacting.
+  - Stored in `RoleReactionMessage` schema.
+- **Role Counts**:
+  - Voice channels display live member counts for roles.
+  - Stored in `RoleCountConfig` schema.
+
+---
+
+### 🎁 Giveaways
+- **Commands**: `/sendGiveawayMessage`.
+- **Persistence**: `Giveaway` schema.
+- **Lifecycle**:
+  - Giveaway started and saved to DB.
+  - Bot restarts → resumes giveaway.
+  - Ends at scheduled time, selects winners.
+
+```mermaid
+flowchart TD
+    A[Start Giveaway] --> B[Save to DB]
+    B --> C[Wait for End Time]
+    C --> D[Select Winners]
+    D --> E[Announce Results]
+```
+
+---
+
+### 📊 Logging & Lifecycle
+- **Guild Events**:
+  - `guildMemberAdd` → welcome message, log, update member count.
+  - `guildMemberRemove` → departure log, update member count.
+- **Message Logs**:
+  - `messageDelete` → logs author, content, timestamp.
+  - `messageUpdate` → logs before/after edits.
+- **Startup Recovery**:
+  - Restores giveaways and reaction roles on `ready`.
+  - Updates UTC channels with `readyUtc`.
+
+---
+
+## 📂 Persistence Layer
+- **Guild Configs**: Centralized configuration per guild (`config.js`).
+- **Users**: Levels and message counts.
+- **Infractions**: Strikes and warnings.
+- **Tickets & Transcripts**: Support history.
+- **Giveaways**: Entrants and winners.
+- **Role Systems**: Reaction roles and role counts.
+
+---
+
+## 🔗 External Integrations
+- **Discord API** → Slash commands, modals, events, embeds.
+- **MongoDB** → Persistence of all systems.
+- **GitHub Gist** → Ticket transcripts.
+- **Discord-html-transcripts** → Export formatting.
+- **date-fns / node-cron** → UTC scheduling.
+- **fast-levenshtein** → Fuzzy banned word matching.
+- **GitHub Pages** → Landing page hosting.
+
+---
+
+## 💡 Strengths
+- Modular subsystems with clear separation of concerns.
+- Resilient startup recovery (state restoration).
+- Configurable per guild.
+- Transparent logging for accountability.
+- Production-proven: active across multiple servers.
 
 ---
 
 ## 🔮 Future Work
+- Add moderation commands: `/unstrike`, `/warn`, `/unwarn`, `/timeout`, `/untimeout`, `/kick`, `/set-banned-words`.
+- Owner-only commands: `/reload`, `/shutdown`, `/deploy`.
+- Schema consolidation for efficiency.
+- Unified config management (removes + lists).
+- Expanded logging (channels, actions).
+- Leaderboard pagination & search.
+- Configurable strike policies.
+- Multi-ticket configurations.
 
-### Scaling & Extensibility
-- Make commands more **dynamic** (e.g., `/send-rules` configurable instead of hard-coded).
-- Expand non-hardcoded **channel IDs** → fully config-driven across all features.
-- Transition away from **GitHub Gist** to a more scalable transcript storage method (still under evaluation).
+---
