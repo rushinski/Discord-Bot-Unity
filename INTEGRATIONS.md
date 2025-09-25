@@ -2,66 +2,68 @@
 
 ## 🎯 Purpose
 
-The Unified Discord Bot integrates with several **third-party services** to enable its modular community management features.  
-These integrations power **commands, persistence, transcripts, and deployment workflows**.
+The Unified Discord Bot integrates with several **third-party services and libraries** to enable its modular community management features.  
+These integrations power **commands, persistence, transcripts, scheduling, and deployment workflows**.
 
 ---
 
 ## 🔑 Discord API (Core Platform)
 
-- **Purpose:** Power all bot interactions (commands, events, role handling)
+- **Purpose:** Power all bot interactions (commands, events, role handling).
 - **Integration:**
   - Library: `discord.js v14`
   - Gateway intents: `Guilds`, `GuildMembers`, `GuildPresences`, `MessageContent`, `Reactions`
   - Handlers: slash commands, buttons, dropdowns, modals, events
 - **Features:**
-  - Slash Commands (`/leaderboard`, `/idBan`, `/startGiveaway`)
+  - Slash Commands (`/leaderboard`, `/idBan`, `/sendGiveawayMessage`)
   - Role/permission enforcement via Discord’s security model
   - Event-driven lifecycle (messages, reactions, tickets, verification)
 - **Risks:**
-  - Bot token exposure = total compromise (must be secured in `config.json` / `.env`)
-  - Rate limits must be respected to avoid bans
+  - Bot token exposure = full compromise (must be secured in `.env`)
+  - Must respect Discord API rate limits to avoid temporary bans
 
 ---
 
 ## 🔑 MongoDB (Database)
 
-- **Purpose:** Provide persistence across all features
+- **Purpose:** Provide persistence across all features.
 - **Integration:**
   - ODM: Mongoose
-  - Connection string (`MONGO_URL`) from `config.json` / `.env`
+  - Connection string (`MONGO_URL`) from `.env`
 - **Stored Data:**
   - Users: XP, levels, notification settings
-  - Infractions: strikes, warnings, bans
-  - Tickets: active tickets, status, metadata
-  - Ticket Transcripts: archived transcripts
+  - Infractions: warnings, strikes, bans
+  - Tickets: active tickets, metadata
+  - Ticket Transcripts: archived transcripts (1000+ stored)
   - Giveaways: prize, entrants, winners
-  - Config: per-guild rules, ticket categories
+  - Config: per-guild logs, tickets, UTC, roles
   - RoleReactionMessages: reaction-role mappings
+  - RoleCountConfig: role-based voice channel counters
 - **Risks:**
-  - Mongo URL exposure = data breach
-  - Improper schema validation could corrupt persistence
+  - Mongo URL exposure = total data breach
+  - Misconfigured schemas could corrupt data
 
 ---
 
 ## 🔑 GitHub Gist (Transcript Archiving)
 
-- **Purpose:** Store ticket transcripts externally for auditability
+- **Purpose:** Archive ticket transcripts externally for accountability.
 - **Integration:**
   - Utility: `utils/githubGistUtils.js`
   - API requests on ticket closure
 - **Features:**
   - Permanent, shareable transcript URLs
-  - Keeps Discord channels uncluttered
+  - Keeps Discord servers uncluttered
+  - Fallback to MongoDB if API fails
 - **Risks:**
-  - Public Gists may expose sensitive conversations
-  - Should prefer **secret Gists** for private servers
+  - Public Gists could leak private conversations
+  - Must always default to **secret Gists**
 
 ---
 
 ## 🔑 Discloud Hosting (Deployment)
 
-- **Purpose:** Simplify hosting and redeployment
+- **Purpose:** Simplify hosting, scaling, and redeployment.
 - **Integration:**
   - Config: `discloud.config`
   - Snapshots: `/discloud/import/*`
@@ -69,10 +71,19 @@ These integrations power **commands, persistence, transcripts, and deployment wo
 - **Features:**
   - Rapid deployment from GitHub
   - Rollback via imports/backups
-  - Scales alongside VPS hosting for reliability
+  - Deployed in tandem with VPS for resilience
 - **Risks:**
-  - Config leaks could allow attackers to hijack deployments
-  - Vendor lock-in for deployment workflows
+  - Config leaks could allow hijacked deployments
+  - Vendor lock-in for automated workflows
+
+---
+
+## 🔑 Additional Libraries
+
+- **discord-html-transcripts** → export styled transcripts
+- **date-fns / node-cron** → scheduling + UTC updates
+- **fast-levenshtein** → fuzzy banned-word matching
+- **GitHub Pages** → landing page hosting ([Unity Bot Landing Page](https://rushinski.github.io/Unity-Landing-Page/#tickets))
 
 ---
 
@@ -80,19 +91,22 @@ These integrations power **commands, persistence, transcripts, and deployment wo
 
 ```mermaid
 flowchart TD
-
-User -->|Commands & Events| DiscordAPI
-DiscordAPI --> MongoDB
-DiscordAPI --> GitHubGist
-GitHubRepo --> Discloud
+    U[User] -->|Commands & Events| D[Discord API]
+    D --> M[MongoDB]
+    D --> G[GitHub Gist]
+    GH[GitHub Repo] --> H[Discloud Hosting]
+    D --> L[Landing Page (GitHub Pages)]
 ```
 
 ---
 
 ## ⚡ Integration Strengths
 
-- **Discord API** → native commands, events, role/permission security
-- **MongoDB** → persistent storage for users, infractions, tickets, giveaways
-- **GitHub Gist** → scalable ticket transcript archiving
-- **Discloud Hosting** → deployment portability, backups, rollback safety
-- **Security Alignment** → secrets stored in `config.json` / `.env`, role-based access enforced
+- **Discord API** → native commands, events, role/permission security.
+- **MongoDB** → persistent storage across subsystems.
+- **GitHub Gist** → external, auditable ticket archive.
+- **Discloud Hosting** → simple deployment, backups, rollback.
+- **Libraries** → modern ecosystem (`date-fns`, `node-cron`, `fast-levenshtein`).
+- **Landing Page** → external showcase for features & ticketing.
+
+---

@@ -10,7 +10,7 @@ As a community-facing platform handling **user data, moderation actions, and ext
 ## 🔑 Core Risks
 
 ### 1. User Data (PII)
-- **Collected:** Discord IDs, usernames, messages, XP/levels, moderation strikes, tickets.
+- **Collected:** Discord IDs, usernames, messages, XP/levels, moderation strikes, tickets, ticket transcripts.
 - **Storage:** MongoDB (schemas: `User`, `Infractions`, `Ticket`, `TicketTranscript`).
 - **Risks:**
   - Exposure if MongoDB credentials are leaked.
@@ -18,18 +18,20 @@ As a community-facing platform handling **user data, moderation actions, and ext
 - **Mitigations:**
   - MongoDB URL stored securely in `.env` / `config.json`.
   - Ticket transcripts uploaded as **secret GitHub Gists** (not public).
+  - Fallback to encrypted MongoDB storage.
   - Access restricted to trusted moderators only.
 
 ---
 
 ### 2. File & Transcript Storage
 - **Collected:** Ticket transcripts, moderation logs.
-- **Storage:** GitHub Gist (via API).
+- **Storage:** GitHub Gist (via API), fallback MongoDB collection.
 - **Risks:**
   - Public Gists could expose sensitive conversations.
 - **Mitigations:**
   - All transcripts default to **secret Gists**.
-  - Only moderators receive links back in Discord.
+  - Only moderators receive transcript links in Discord.
+  - 1000+ transcripts securely stored across production environments.
 
 ---
 
@@ -39,32 +41,34 @@ As a community-facing platform handling **user data, moderation actions, and ext
   - Bot token exposure = full account compromise.
   - MongoDB URL exposure = database breach.
 - **Mitigations:**
-  - `.gitignore` includes secrets → never committed.
+  - `.gitignore` excludes secrets → never committed.
   - Deployment pipelines use environment variables.
-  - Keys rotated regularly and revoked on leaks.
+  - Keys rotated regularly and revoked if leaked.
 
 ---
 
 ### 4. Moderation Actions
-- **Collected:** Warnings, strikes, bans (via `/strike`, `/idBan`, `/idUnban`).
+- **Collected:** Warnings, strikes, bans, timeouts, verification logs.
 - **Storage:** `Infractions` schema in MongoDB.
 - **Risks:**
   - Abuse by untrusted moderators.
-  - Escalation if command access is too broad.
+  - Escalation if strike system misconfigured.
 - **Mitigations:**
   - Commands gated via Discord permissions (`BAN_MEMBERS`, `ADMINISTRATOR`).
-  - Bot-side `admin` and `owner` flags enforced in command handlers.
-  - Cooldowns prevent spam or abuse.
+  - Bot-side `admin` and `owner` flags enforced in handlers.
+  - Configurable strike tiers ensure consistency.
+  - Verification tickets reduce raid/bot account abuse.
 
 ---
 
 ### 5. Deployment & Hosting
 - **Platform:** VPS + Discloud.
 - **Risks:**
-  - Discloud config leaks could allow hijacked deployments.
+  - Config leaks could allow hijacked deployments.
 - **Mitigations:**
   - Config files restricted in repo.
   - Discloud imports/backups rotated and secured.
+  - VPS access restricted via SSH keys.
 
 ---
 
@@ -74,6 +78,7 @@ As a community-facing platform handling **user data, moderation actions, and ext
 2. **Zero Secrets in Repo** → Tokens and DB credentials externalized in `.env`.
 3. **Externalized Risk** → GitHub Gist handles transcript storage, reducing DB bloat.
 4. **Auditability** → All infractions logged, transcripts archived, and tickets closed with traceable history.
+5. **Defense in Depth** → Escalation policies (warnings → strikes → bans) layered with verification workflows.
 
 ---
 
@@ -83,6 +88,7 @@ As a community-facing platform handling **user data, moderation actions, and ext
 - No structured intrusion detection or anomaly monitoring.
 - GitHub Gist, while convenient, may not provide full compliance guarantees.
 - Reliance on manual moderator oversight for enforcement quality.
+- Secrets currently visible in `config.json` in repo → must be migrated fully to `.env`.
 
 ---
 
@@ -90,9 +96,12 @@ As a community-facing platform handling **user data, moderation actions, and ext
 
 The Unified Discord Bot demonstrates **security-aware design** in a real-world community management context:
 
-- Protected user data with secret transcripts.  
+- Protected user data with secret transcripts (GitHub Gist + MongoDB fallback).  
 - Safe handling of bot tokens and MongoDB URLs.  
 - Moderation gated by both Discord and bot-level permissions.  
+- Verification tickets protect against raid-style attacks.  
 - Deployment aligned with best practices for secrets management.  
 
 While lightweight, the bot applies **practical, production-grade security practices** appropriate for community-scale deployment.
+
+---

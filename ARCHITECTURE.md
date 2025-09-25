@@ -4,6 +4,36 @@ Unity Bot is a modular, event-driven Discord bot built with **Node.js** and **di
 
 ---
 
+## 🌐 System-Wide Overview
+
+The following diagram shows how all subsystems interact with Discord and external services:
+
+```mermaid
+flowchart TD
+    U[Discord User] -->|Commands, Messages, Reactions| D[Discord API]
+    D --> B[Bot Client]
+
+    B --> T[Ticketing & Verification]
+    B --> M[Moderation]
+    B --> L[Leveling System]
+    B --> R[Roles & Counts]
+    B --> G[Giveaways]
+    B --> C[Configuration]
+
+    T --> DB[(MongoDB)]
+    M --> DB
+    L --> DB
+    R --> DB
+    G --> DB
+    C --> DB
+
+    T --> GIST[GitHub Gist]
+
+    B --> P[GitHub Pages Landing Page]
+```
+
+---
+
 ## ⚙️ Entrypoint
 - **`index.js`** bootstraps the bot.
   - Initializes the Discord client with required intents.
@@ -65,6 +95,7 @@ flowchart TD
   - Critical severity → immediate ban.
 - **Persistence**: `Infractions` schema.
 - **Transparency**: Logged actions, auto-reset infractions post-ban.
+- **Rate-Limiting**: Cooldowns and Discord permission checks prevent abuse.
 
 ```mermaid
 flowchart TD
@@ -193,6 +224,7 @@ flowchart TD
 - Configurable per guild.
 - Transparent logs for moderation and support.
 - Scalable, production-proven in multiple servers.
+- Full audit trail with transcripts and infractions.
 
 ---
 
@@ -205,5 +237,6 @@ flowchart TD
 - Leaderboard pagination + searchability.
 - Configurable strike escalation policies.
 - Multi-ticket configurations.
+- Automated penetration testing & anomaly detection.
 
 ---
