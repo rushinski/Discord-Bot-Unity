@@ -149,15 +149,15 @@ module.exports = {
             .setTitle('Banned Word Detected')
             .setColor('Red')
             .addFields(
-              { name: 'User', value: `${author.tag} (<@${userId}>)` },
-              { name: 'Message Content', value: originalContent || 'No content' },
-              { name: 'Banned Word', value: match.word },
-              { name: 'Severity', value: match.severity },
-              { name: 'Action Taken', value: actionTaken },
-              { name: 'Strikes', value: `${userInfractions.strikes}/3` },
-              { name: 'Warnings', value: `${userInfractions.warnings || 0}/2` },
-              { name: 'Timestamp', value: `<t:${Math.floor(Date.now() / 1000)}:F>` }
-            );
+              { name: 'User', value: `${author.tag} (<@${userId}>)`, inline: false },
+              { name: 'Message Content', value: originalContent || 'No content', inline: true },
+              { name: 'Banned Word', value: match.word, inline: true },
+              { name: 'Severity', value: match.severity, inline: true },
+              { name: 'Action Taken', value: actionTaken, inline: true },
+              { name: 'Strikes', value: `${userInfractions.strikes}/3`, inline: true },
+              { name: 'Warnings', value: `${userInfractions.warnings || 0}/2`, inline: true }
+            )
+            .setFooter({ text: `Message sent at: ${new Date().toLocaleString()}` });
 
           await logChannel.send({ embeds: [embed] });
         }

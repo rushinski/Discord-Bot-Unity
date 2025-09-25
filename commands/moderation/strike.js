@@ -66,6 +66,7 @@ module.exports = {
 
           await interaction.reply({
             content: `${target.tag} has been banned for accumulating three strikes.`,
+            flags: 64, // Ephemeral reply
           });
         } else {
           await interaction.reply({
@@ -80,6 +81,7 @@ module.exports = {
         // Notify how many strikes the user currently has.
         await interaction.reply({
           content: `${target.tag} now has ${infraction.strikes} strike(s).`,
+          flags: 64, // Ephemeral reply
         });
       }
     } catch (error) {

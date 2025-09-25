@@ -47,6 +47,7 @@ module.exports = {
 
       return interaction.reply({
         content: `User with ID ${userId} was unbanned successfully.`,
+        flags: 64, // Ephemeral reply
       });
     } catch (error) {
       console.error('[Moderation:id-unban] Error executing command:', error);

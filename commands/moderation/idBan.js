@@ -56,6 +56,7 @@ module.exports = {
 
       return interaction.reply({
         content: `User with ID ${userId} was banned successfully.\nReason: ${reason}`,
+        flags: 64, // Ephemeral reply
       });
     } catch (error) {
       console.error('[Moderation:id-ban] Error executing command:', error);

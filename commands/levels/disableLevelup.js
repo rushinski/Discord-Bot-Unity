@@ -46,7 +46,7 @@ module.exports = {
       await user.save();
 
       return interaction.reply({
-        content: 'Your level-up notifications have been disabled. Use `/enable-levelup` to turn them back on.',
+        content: 'Your level-up notifications have been disabled. Use `/enable-levelup` to turn them on.',
         flags: 64,
       });
     } catch (err) {
