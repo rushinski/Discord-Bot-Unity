@@ -28,8 +28,6 @@ flowchart TD
     C --> DB
 
     T --> GIST[GitHub Gist]
-
-    B --> P[GitHub Pages Landing Page]
 ```
 
 ---
