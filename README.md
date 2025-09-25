@@ -4,6 +4,8 @@
 A **modular Discord bot** built to consolidate commands, events, and support workflows into **one scalable system**.
 Originally designed for a **large-scale gaming community (Kingdom 3743, ~900 members)**, it has since been deployed across **8 servers**, replacing the need for multiple bots.
 
+👉 Explore the **[Unity Bot Landing Page](https://rushinski.github.io/Unity-Landing-Page/#tickets)** for a live showcase.
+
 ---
 
 ## 🌐 Live Usage
@@ -17,26 +19,27 @@ Originally designed for a **large-scale gaming community (Kingdom 3743, ~900 mem
 ## ✨ Features
 
 ### 🎭 Community Engagement
-- 🏆 **Leveling & Leaderboards** → gamified chat progression, user persistence in MongoDB, `/leaderboard` command to showcase top members.
-- 🎟️ **Ticketing System** → dropdown ticket creation, role-based verification, support pings with cooldown, and closure transcripts (saved to GitHub Gist).
-- 📊 **Role Selection & Counts** → `/sendRolesSelect` for self-assignable roles, with live updates tracked by `updateRoleCount`.
+- 🏆 **Leveling & Leaderboards** → gamified chat progression, message-based leveling engine, `/leaderboard` and `/levelprogress` commands.
+- 🎟️ **Ticketing System** → dropdown ticket creation, modal-based input, role-based verification, support pings with cooldown, closure transcripts (stored in GitHub Gist, fallback to MongoDB).  
+  - **1000+ transcripts archived** across servers.
+- 📊 **Role Selection & Counts** → `/sendRolesSelect` for self-assignable roles, reaction role categories, and **real-time role count voice channels**.
 
 ### ⚖️ Moderation & Security
-- 🚫 **Rule Enforcement** → `/send-rules` command, banned words filter, structured enforcement.
-- 🔨 **Expanded Moderation Tools** → `/idBan`, `/idUnban`, `/strike`, `/set`, `/unset`, `/verifyUser` for complete admin control.
-- 📝 **Infractions Tracking** → MongoDB persistence for strikes, bans, and moderation logs.
+- 🚫 **Rule Enforcement** → banned words filter with fuzzy matching + severity tiers (warn, strike, auto-ban).
+- 🔨 **Moderation Tools** → `/idBan`, `/idUnban`, `/strike`, `/verifyUser`, `/clear` with auto-escalation (3 strikes = ban).
+- 📝 **Infractions Tracking** → Persistent tracking in MongoDB with automated resets after bans.
+- ✅ **Verification System** → onboarding tickets with manual/automatic verification workflows.
 
 ### 🎉 Engagement Utilities
-- 🎁 **Giveaways** → `/startGiveaway` with persistent schema for entrants and winners.
-- ✅ **Verification System** → `/sendVerification`, verification tickets, reaction-based verification, persistent storage of verification states.
-- ⏰ **Utilities** → `/getUtc`, `/say`, scheduled UTC-ready status via `readyUTC`.
+- 🎁 **Giveaways** → `/sendGiveawayMessage` with persistent schema for entrants/winners, resumes after restart.
+- ⏰ **Utilities** → `/getUtc`, `/say`, scheduled UTC-ready channels via `readyUtc` event.
 
 ### 🛠️ Infrastructure & Extensibility
 - 🛠️ **Dynamic Loaders** → auto-registration of commands, events, and UI components.
 - 🔐 **Access Control** → flag-driven restrictions (`admin`, `owner`), cooldowns, and Discord-native permission checks.
-- ☁️ **Hosting/Deployment** → optimized for Discloud with `discloud.config`, backups, and import snapshots.
-- 📂 **Persistence** → MongoDB + Mongoose models for users, tickets, giveaways, configs, transcripts, infractions.
-- 🔗 **External Integrations** → GitHub Gist for transcript archiving.
+- ☁️ **Hosting/Deployment** → optimized for Discloud + VPS hosting with backups and snapshots.
+- 📂 **Persistence** → MongoDB models for users, configs, tickets, transcripts, infractions, giveaways, and role systems.
+- 🔗 **External Integrations** → GitHub Gist for transcript archiving, GitHub Pages for landing page.
 
 ---
 
@@ -44,6 +47,7 @@ Originally designed for a **large-scale gaming community (Kingdom 3743, ~900 mem
 
 👥 **893+ community members** in Kingdom 3743  
 🤖 **8 servers** actively running the bot  
+📂 **1000+ support transcripts archived**  
 💼 **3 paid bot development offers** generated from this project  
 ☁️ **Scaled hosting** → upgraded from free-tier to paid server due to growth  
 🛡️ **Security-aligned** → built to integrate with Discord’s security & permission model
@@ -58,11 +62,11 @@ Originally designed for a **large-scale gaming community (Kingdom 3743, ~900 mem
 
 **Features**
 - Slash Command Framework (`SlashCommandBuilder`)
-- Modular event-driven architecture
-- Leveling + gamification engine
-- Ticket system with transcripts + GitHub Gist integration
-- Expanded moderation & verification workflows
-- Giveaway engine with persistent storage
+- Modal-based ticket & verification flows
+- Gamification/leveling engine with persistence
+- Giveaway engine with auto-resume
+- GitHub Gist integration for transcripts
+- Reaction roles + role-count channels
 
 **Infrastructure**
 - Hosting: Paid VPS + Discloud deployment  
@@ -75,23 +79,20 @@ Originally designed for a **large-scale gaming community (Kingdom 3743, ~900 mem
 
 ```text
 bot/
-├── commands/              # Modular command files
-│   ├── levels/            # Leveling commands (leaderboard, add/remove/reset messages)
-│   ├── moderation/        # Moderation commands (ban/unban, strikes, verifyUser, set/unset)
-│   ├── misc/              # Miscellaneous commands (getUtc, say)
-│   ├── sendRolesSelect.js # Role selection embed
-│   ├── sendRules.js       # Rules enforcement
-│   ├── sendTicketSetup.js # Ticket setup embed
-│   ├── sendVerification.js# Verification setup
-│   └── startGiveaway.js   # Giveaway system
+├── commands/              # Slash command implementations
+│   ├── configurations/    # Guild configs (tickets, roles, logs, UTC)
+│   ├── levels/            # Leveling commands (leaderboard, add/remove/reset)
+│   ├── moderation/        # Moderation (ban/unban, strikes, verifyUser, clear)
+│   ├── misc/              # Misc commands (getUtc, say)
+│   └── send/              # Setup messages (tickets, verification, roles, rules, giveaways)
 │
-├── events/                # Event handlers (messages, moderation, tickets, reactions, guild events)
-├── utils/                 # Infrastructure loaders & helpers (RegisterCommands, EventLoader, ComponentLoader)
-├── schemas/               # MongoDB models (User, Ticket, Infractions, Giveaways, Config, Transcripts)
+├── events/                # Event handlers (tickets, moderation, logging, roles, UTC)
+├── schemas/               # MongoDB models (users, infractions, tickets, transcripts, configs, giveaways, roles)
+├── utils/                 # Infrastructure + helpers (loaders, level utils, ticket creation, gist)
 ├── data/                  # Static data (levels, banned words)
-├── discloud/              # Hosting configs, backups, import snapshots
+├── modals/                # Modal handlers (e.g., /say input)
 │
-├── index.js               # Entrypoint, client + loaders
+├── index.js               # Entrypoint, client bootstrap + loaders
 ├── config.json            # Bot config (tokens, Mongo URL, bot ID)
 ├── package.json           # Dependencies
 └── package-lock.json      # Lockfile
@@ -110,10 +111,10 @@ bot/
 - Demonstrates hands-on QA and monitoring discipline.
 
 ### Error Handling
-- `try/catch` used across all commands/events.
+- `try/catch` used across commands/events.
 - **Central handling** in `index.js`.
 - **Utils-level handling** (all except `levelUtils.js`).
-- `EventLoader.js` demonstrates robust recovery for failed module loads.
+- `EventLoader.js` ensures robust recovery for failed module loads.
 
 ---
 
@@ -128,9 +129,14 @@ bot/
 ## 🔮 Future Work
 
 ### Scaling & Extensibility
-- Plans to make commands more **dynamic** (e.g., `/send-rules` configurable instead of hard-coded).
-- Expand non-hardcoded **channel IDs** → fully config-driven across features.
-- Transition away from **GitHub Gist** to a more scalable transcript storage method (still under review).
+- Add moderation commands: `/unstrike`, `/warn`, `/unwarn`, `/timeout`, `/untimeout`, `/kick`, `/set-banned-words`.
+- Owner-only commands for scalability: `/reload`, `/shutdown`, `/deploy`.
+- Combine schemas for efficiency.
+- Unified config management (removes + lists in same command).
+- Expanded channel logging capabilities.
+- Leaderboard pages & searchability to show ranking beyond top 10.
+- Configurable strike system.
+- Multi-ticket configurations.
 
 ---
 
