@@ -120,9 +120,9 @@ bot/
 
 ## 📖 Additional Documentation
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) → System design and lifecycle flow  
-- [INTEGRATIONS.md](./INTEGRATIONS.md) → Discord API, MongoDB, GitHub Gist integrations  
-- [SECURITY.md](./SECURITY.md) → Role-based restrictions, cooldown enforcement, data handling
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) → System design and lifecycle flow  
+- [INTEGRATIONS.md](./docs/INTEGRATIONS.md) → Discord API, MongoDB, GitHub Gist integrations  
+- [SECURITY.md](./docs/SECURITY.md) → Role-based restrictions, cooldown enforcement, data handling
 
 ---
 
